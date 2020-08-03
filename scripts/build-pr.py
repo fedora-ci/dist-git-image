@@ -116,11 +116,13 @@ class Koji():
         """
 
         fed_release = branch
+        fed_dist = branch
         if branch == "master":
             dist_number = _rawhide_dist_number()
             if not dist_number:
                 raise Exception("Coudln't figure out fedora release number for master branch")
-            fed_release = "f{}".format(dist_number)
+            fed_dist = "f{}".format(dist_number)
+            fed_release = "rawhide"
 
         git_url = "{0}/rpms/{1}.git".format(pagure_url, repo)
         try:
@@ -164,7 +166,7 @@ class Koji():
             raise Exception("Couldn't merge {}".format(pr)) from None
 
         logger.info("Bulding src...")
-        cmd = "fedpkg --release {} srpm".format(fed_release)
+        cmd = "fedpkg --release {} srpm".format(fed_dist)
         logger.debug("Running {}".format(cmd))
         try:
             subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
@@ -181,14 +183,17 @@ class Koji():
             raise Exception("Couldn't find src.rpm file")
 
         logger.info("Building scratch build for {} {}".format(repo, pr))
-        opts = {"scratch": True, "arch-override": "x86_64"}
+        cmd = "koji build --arch-override=x86_64 --scratch {} {}".format(fed_release, srpms[0])
+        logger.debug("Running {}".format(cmd))
         try:
-            task_id = self.hub.build(src=srpms[0], target=fed_release, opts=opts)
-        except koji.ActionNotAllowed as exception:
-            raise exception from None
-        except Exception as exception:
+            subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        except subprocess.CalledProcessError as exception:
             logger.error(str(exception))
-            raise Exception("Failed building scratch build") from None
+            if exception.stderr:
+                logger.debug(exception.stderr)
+            if exception.stdout:
+                logger.debug(exception.stdout)
+            raise Exception("Failed submitting scratch build") from None
 
         os.chdir(current_dir)
         return task_id
