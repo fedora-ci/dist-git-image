@@ -190,7 +190,8 @@ class Koji():
         source = srpms[0]
         logger.debug("Going to upload {}".format(source))
         serverdir = unique_path('cli-build')
-        callback = _progress_callback
+        # callback = _progress_callback
+        callback = None
         logger.debug("uploading {} to {}".format(source, serverdir))
         try:
             self.hub.uploadWrapper(source, serverdir, callback=callback)
