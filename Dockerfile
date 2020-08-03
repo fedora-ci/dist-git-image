@@ -35,10 +35,8 @@ VOLUME [ "/sys/fs/cgroup" ]
 
 # Copy necessary virt-customize files into container
 COPY ["scripts/virt-customize.py", \
-# Copy necessary rpmbuild files into the container
-#      "scripts/pull_old_task.sh", "scripts/repoquery.sh", "scripts/koji_build_pr.sh", \
+      "scripts/build-pr.py" \
 # Copy necessary files from package-test to the container
-#      "scripts/package-test.sh", "scripts/verify-rpm.sh", "scripts/rpm-verify.yml", \
 #      "scripts/resize-qcow2.sh", "scripts/sync-artifacts.yml", \
       "/tmp/"]
 
