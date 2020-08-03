@@ -19,6 +19,7 @@ global logger
 logger = None
 
 result_file = "virt-customize-result.json"
+output_log = "virt-customize.log"
 
 #pylint: disable=logging-format-interpolation
 
@@ -73,7 +74,8 @@ def configure_logging(verbose=False, output_file=None):
 
 
     if output_file:
-        os.remove(output_file)
+        if os.path.isfile(output_file):
+            os.remove(output_file)
         output_fh = logging.FileHandler(output_file)
         output_fh.setLevel(logger_lvl)
         output_fh.setFormatter(formatter)
@@ -499,7 +501,7 @@ def main():
 
     args.release = args.release.lower()
 
-    configure_logging(verbose=args.verbose, output_file="virt-customize.log")
+    configure_logging(verbose=args.verbose, output_file=output_log)
 
     task_repos = []
     mykoji = Koji()
@@ -522,7 +524,7 @@ def main():
     if not qcow2.prepare_qcow2(image, args.release, task_repos, args.task_ids, args.install_rpms, args.sys_update):
         raise Exception("Couldn't prepare qcow2 image")
 
-    result = {"status": 0, "image": image}
+    result = {"status": 0, "image": image, "log": output_log}
     with open(result_file, "w") as _file:
         json.dump(result, _file, indent=4, sort_keys=True, separators=(',', ': '))
 
@@ -533,7 +535,7 @@ if __name__ == "__main__":
     except Exception as exception:
         traceback.print_exc()
         logger.error(str(exception))
-        result = {"status": 1, "image": None, "error_reason": str(exception)}
+        result = {"status": 1, "image": None, "error_reason": str(exception), "log": output_log}
         with open(result_file, "w") as _file:
             json.dump(result, _file, indent=4, sort_keys=True, separators=(',', ': '))
         sys.exit(1)
