@@ -14,3 +14,15 @@ This script prepares a qcow2 image to be used by the pipeline
 * Install the rpms in the qcow2 (optional)
 * Update the system (optional)
 
+### build-pr.py
+
+This script creates an scratch build in koji from a pull request
+
+* Clone git repo
+* Checkout branch
+* Fetch PR
+* Merge PR
+* Prepare an src.rpm file
+* Submit an scratch build from src.rpm
+* Wait scratch build to complete
+

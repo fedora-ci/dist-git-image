@@ -11,6 +11,7 @@ RUN for i in {1..5} ; do dnf -y install \
         createrepo \
         dnf-plugins-core \
         dnf-utils \
+        fedpkg \
         git \
         koji \
         krb5-workstation \
