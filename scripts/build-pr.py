@@ -19,6 +19,11 @@ import requests
 
 import koji
 from koji_cli.lib import watch_tasks
+from koji_cli.lib import (
+    watch_tasks,
+    _progress_callback,
+    unique_path
+)
 from git import Repo
 
 global logger
@@ -182,10 +187,22 @@ class Koji():
         if not srpms:
             raise Exception("Couldn't find src.rpm file")
 
+        source = srpms[0]
+        logger.debug("Going to upload {}".format(source))
+        serverdir = unique_path('cli-build')
+        callback = _progress_callback
+        logger.debug("uploading {} to {}".format(source, serverdir))
+        try:
+            self.hub.uploadWrapper(source, serverdir, callback=callback)
+        except Exception as exception:
+            logger.error(str(exception))
+            raise Exception("Failed uploading {}".format(source)) from None
+        source = "%s/%s" % (serverdir, os.path.basename(source))
+
         logger.info("Building scratch build for {} {}".format(repo, pr))
         opts = {"scratch": True, "arch-override": "x86_64"}
         try:
-            task_id = self.hub.build(src=srpms[0], target=fed_release, opts=opts)
+            task_id = self.hub.build(src=source, target=fed_release, opts=opts)
         except koji.ActionNotAllowed as exception:
             raise exception from None
         except Exception as exception:
