@@ -181,7 +181,7 @@ class Koji():
             raise Exception("Couldn't find src.rpm file")
 
         logger.info("Building scratch build for {} {}".format(repo, pr))
-        opts = {"scratch": True}
+        opts = {"scratch": True, "arch-override": "x86_64"}
         try:
             task_id = self.hub.build(src=srpms[0], target=fed_release, opts=opts)
         except koji.ActionNotAllowed as exception:
@@ -208,16 +208,15 @@ class Koji():
             # /usr/lib/python3.8/site-packages/koji_cli/lib.py
             if state == koji.TASK_STATES['CLOSED']:
                 logger.info("task completed successfully")
-                break
+                return True
             if state == koji.TASK_STATES['FAILED']:
                 logger.info("task failed")
-                break
+                return False
             if state == koji.TASK_STATES['CANCELED']:
                 logger.info("was canceled")
-                break
+                return False
             # shouldn't happen
             logger.info("task has not completed yet")
-        return
 
 
 def main():
@@ -239,7 +238,8 @@ def main():
     mykoji = Koji()
     global task_id
     task_id = mykoji.build_pr(args.git_url, args.repo, args.branch, args.pr)
-    mykoji.wait_task_complete(task_id)
+    if not mykoji.wait_task_complete(task_id):
+        raise Exception("There was some problem creating scratch build")
 
     result = {"status": 0, "task_id": task_id, "log": output_log}
     with open(result_file, "w") as _file:
