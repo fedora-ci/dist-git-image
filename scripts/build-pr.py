@@ -201,7 +201,7 @@ class Koji():
         source = "%s/%s" % (serverdir, os.path.basename(source))
 
         logger.info("Building scratch build for {} {}".format(repo, pr))
-        opts = {"scratch": True, "arch-override": "x86_64"}
+        opts = {"scratch": True, "arch_override": "x86_64"}
         try:
             task_id = self.hub.build(src=source, target=fed_release, opts=opts)
         except koji.ActionNotAllowed as exception:
