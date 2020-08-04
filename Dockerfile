@@ -37,6 +37,7 @@ VOLUME [ "/sys/fs/cgroup" ]
 COPY ["scripts/virt-customize.py", \
       "scripts/checkout-repo.py", \
       "scripts/create-build.py", \
+      "scripts/provision.py", \
 # Copy necessary files from package-test to the container
 #      "scripts/resize-qcow2.sh", "scripts/sync-artifacts.yml", \
       "/tmp/"]
