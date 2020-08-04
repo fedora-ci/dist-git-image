@@ -96,6 +96,7 @@ def provision(image, inventory_file):
             attempt += 1
             if attempt > max_retry:
                 logger.error(str(exception))
+                logger.error(inventory.stdout)
                 raise Exception("Invalid inventory".format(image)) from None
             logger.info("Invalid inventory. Retrying to provision {}. Attempt {}/{} ".format(image, attempt, max_retry))
             continue
