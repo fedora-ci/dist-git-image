@@ -12,27 +12,24 @@ import glob
 import subprocess
 import json
 import time
-import shutil
 
 from contextlib import redirect_stdout
 import requests
 
 import koji
-from koji_cli.lib import watch_tasks
 from koji_cli.lib import (
     watch_tasks,
-    _progress_callback,
+    # _progress_callback,
     unique_path
 )
-from git import Repo
 
 global logger
 global task_id
 logger = None
 task_id = None
 
-result_file = "build-pr-result.json"
-output_log = "build-pr.log"
+result_file = "create-build-result.json"
+output_log = "create-build.log"
 
 #pylint: disable=logging-format-interpolation
 
@@ -115,37 +112,14 @@ class Koji():
                 raise Exception("Couldn't authenticate using keytab")
 
 
-    def build_pr(self, pagure_url, repo, branch, pr):
+    def create_build(self, repo, dist_ver, release):
         """
-        Apply patch to git branch and create an scratch build
+        Build scratch build from specific repo
         """
-
-        fed_release = branch
-        fed_dist = branch
-        if branch == "master":
-            dist_number = _rawhide_dist_number()
-            if not dist_number:
-                raise Exception("Coudln't figure out fedora release number for master branch")
-            fed_dist = "f{}".format(dist_number)
-            fed_release = "rawhide"
-
-        git_url = "{0}/rpms/{1}.git".format(pagure_url, repo)
-        try:
-            shutil.rmtree(repo)
-        except FileNotFoundError:
-            pass
-        logger.info("Clonning {}".format(git_url))
-        git_repo = Repo.clone_from(git_url, "./{}".format(repo))
-
-        logger.info("Checkout {}".format(branch))
-        git_repo.git.checkout(branch)
-
-
+        logger.info("Bulding src...")
         current_dir = os.getcwd()
         os.chdir(repo)
-
-        logger.info("Fetching PR {}".format(pr))
-        cmd = "git fetch -fu origin refs/pull/{}/head:pr".format(pr)
+        cmd = "fedpkg --release {} srpm".format(dist_ver)
         logger.debug("Running {}".format(cmd))
         try:
             subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
@@ -155,36 +129,12 @@ class Koji():
                 logger.debug(exception.stderr)
             if exception.stdout:
                 logger.debug(exception.stdout)
-            raise Exception("Couldn't fetch PR {}".format(pr)) from None
-
-        logger.info("Merging PR {} to {}".format(pr, branch))
-        cmd = ["git", "-c", "user.name=Fedora CI", "-c", "user.email=ci@lists.fedoraproject.org", "merge", "pr", "-m", "Fedora CI pipeline"]
-        logger.debug("Running {}".format(" ".join(cmd)))
-        try:
-            subprocess.run(cmd, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-        except subprocess.CalledProcessError as exception:
-            logger.error(str(exception))
-            if exception.stderr:
-                logger.error(exception.stderr)
-            if exception.stdout:
-                logger.error(exception.stdout)
-            raise Exception("Couldn't merge {}".format(pr)) from None
-
-        logger.info("Bulding src...")
-        cmd = "fedpkg --release {} srpm".format(fed_dist)
-        logger.debug("Running {}".format(cmd))
-        try:
-            subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-        except subprocess.CalledProcessError as exception:
-            logger.error(str(exception))
-            if exception.stderr:
-                logger.debug(exception.stderr)
-            if exception.stdout:
-                logger.debug(exception.stdout)
-            raise Exception("Couldn't build src {}".format(pr)) from None
+            os.chdir(current_dir)
+            raise Exception("Couldn't create src.rpm") from None
 
         srpms = glob.glob("*.src.rpm")
         if not srpms:
+            os.chdir(current_dir)
             raise Exception("Couldn't find src.rpm file")
 
         source = srpms[0]
@@ -193,25 +143,37 @@ class Koji():
         # callback = _progress_callback
         callback = None
         logger.debug("uploading {} to {}".format(source, serverdir))
-        try:
-            self.hub.uploadWrapper(source, serverdir, callback=callback)
-        except Exception as exception:
-            logger.error(str(exception))
-            raise Exception("Failed uploading {}".format(source)) from None
+        max_retry = 5
+        attempt = 1
+        while True:
+            try:
+                self.hub.uploadWrapper(source, serverdir, callback=callback)
+            except Exception as exception:
+                attempt += 1
+                if attempt > max_retry:
+                    logger.error(str(exception))
+                    os.chdir(current_dir)
+                    raise Exception("Failed uploading {}".format(source)) from None
+                time.sleep(10)
+                logger.info("Retrying to upload {}. Attempt {}/{}".format(source, attempt, max_retry))
+                continue
+            break
         source = "%s/%s" % (serverdir, os.path.basename(source))
 
-        logger.info("Building scratch build for {} {}".format(repo, pr))
+        logger.info("Building scratch build for {}".format(source))
         opts = {"scratch": True, "arch_override": "x86_64"}
         try:
-            task_id = self.hub.build(src=source, target=fed_release, opts=opts)
+            _task_id = self.hub.build(src=source, target=release, opts=opts)
         except koji.ActionNotAllowed as exception:
+            os.chdir(current_dir)
             raise exception from None
         except Exception as exception:
             logger.error(str(exception))
+            os.chdir(current_dir)
             raise Exception("Failed building scratch build") from None
 
         os.chdir(current_dir)
-        return task_id
+        return _task_id
 
 
 
@@ -244,20 +206,22 @@ def main():
     Prepare a qcow2 image for specific Fedora Release
     """
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument("--git-url", "-g", dest="git_url", required=False,
-                        default="https://src.fedoraproject.org", help="Ex: https://src.fedoraproject.org")
     parser.add_argument("--repo", "-r", dest="repo", required=True,
-                        help="Pagure repository name")
-    parser.add_argument("--branch", "-b", dest="branch", required=True, help="Pagure branch")
-    parser.add_argument("--pr", "-p", dest="pr", help="Pagure pull request number")
+                        help="directory with repo spec file")
+    parser.add_argument("--dist-ver", "-d", dest="dist_ver", required=True, help="ex: f33")
+    parser.add_argument("--release", dest="release", help="Release. Ex: f32 or rawhide")
     parser.add_argument("--verbose", "-v", dest="verbose", action="store_true")
     args = parser.parse_args()
+
+
+    dist_ver = args.dist_ver.lower()
+    release = args.release.lower()
 
     configure_logging(verbose=args.verbose, output_file=output_log)
 
     mykoji = Koji()
     global task_id
-    task_id = mykoji.build_pr(args.git_url, args.repo, args.branch, args.pr)
+    task_id = mykoji.create_build(args.repo, dist_ver, release)
     if not mykoji.wait_task_complete(task_id):
         raise Exception("There was some problem creating scratch build")
 
@@ -272,7 +236,7 @@ if __name__ == "__main__":
     except Exception as exception:
         traceback.print_exc()
         logger.error(str(exception))
-        result = {"status": 1, "task_id": None, "error_reason": str(exception), "log": output_log}
+        result = {"status": 1, "task_id": task_id, "error_reason": str(exception), "log": output_log}
         with open(result_file, "w") as _file:
             json.dump(result, _file, indent=4, sort_keys=True, separators=(',', ': '))
         sys.exit(1)

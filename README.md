@@ -4,17 +4,18 @@ This repository contains the scripts needed to build a container image for Fedor
 
 ## Scripts
 
-### virt-customize.py
+### checkout-repo.py
 
-This script prepares a qcow2 image to be used by the pipeline
+This script checkouts specific branch from git repo and check if there is tests/tests*.yml
 
-* Download the base Fedora Qcow2 image for the release
-* Download the rpms from specified Koji task ids
-* Copy those rpms and enable them as repositories in the qcow2
-* Install the rpms in the qcow2 (optional)
-* Update the system (optional)
+If PR is specified merge PR patch to branch
 
-### build-pr.py
+* Clone git repo
+* Checkout branch
+* Fetch PR
+* Merge PR
+
+### create-build.py
 
 This script creates an scratch build in koji from a pull request
 
@@ -26,3 +27,12 @@ This script creates an scratch build in koji from a pull request
 * Submit an scratch build from src.rpm
 * Wait scratch build to complete
 
+### virt-customize.py
+
+This script prepares a qcow2 image to be used by the pipeline
+
+* Download the base Fedora Qcow2 image for the release
+* Download the rpms from specified Koji task ids
+* Copy those rpms and enable them as repositories in the qcow2
+* Install the rpms in the qcow2 (optional)
+* Update the system (optional)
