@@ -459,10 +459,12 @@ class Qcow2():
         if sys_update:
             logger.info("Going to update the system")
             try:
-                self.g.sh("dnf upgrade -y")
+                output = self.g.sh("dnf upgrade -y")
             except RuntimeError as exception:
                 logger.error(str(exception))
                 raise Exception("Couldn't upgrade system") from None
+
+        logger.info(output)
 
         se_config = self.g.sh("cat /etc/selinux/config")
         se_type = None
