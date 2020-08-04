@@ -15,8 +15,9 @@ global logger
 logger = None
 
 result_file = "{}/provision-result.json".format(os.getcwd())
-output_log = "{}/provision-repo.log".format(os.getcwd())
+output_log = "{}/provision.log".format(os.getcwd())
 
+test_artifacts = "{}/artifacts".format(os.getcwd())
 #pylint: disable=logging-format-interpolation
 
 def configure_logging(verbose=False, output_file=None):
@@ -53,7 +54,7 @@ def configure_logging(verbose=False, output_file=None):
         logger.addHandler(output_fh)
 
 
-def provision(image, inventory_file):
+def provision(image, inventory_file, test_artifacts):
     """
     Use ansible to provision a dynamic invnetory
     """
@@ -62,6 +63,7 @@ def provision(image, inventory_file):
     env = os.environ.copy()
     env['TEST_DEBUG'] = '1'
     env['TEST_SUBJECTS'] = image
+    env['TEST_ARTIFACTS'] = test_artifacts
     ansible_inventory = "/usr/share/ansible/inventory/standard-inventory-qcow2"
     if os.path.isfile("inventory"):
         ansible_inventory = "inventory"
@@ -120,11 +122,11 @@ def main():
 
     configure_logging(verbose=args.verbose, output_file=output_log)
 
-    provision(args.image, args.output)
+    provision(args.image, args.output, test_artifacts)
 
     inventory_file = "{}/{}".format(os.getcwd(), args.output)
 
-    result = {"status": 0, "inventory": inventory_file, "log": output_log}
+    result = {"status": 0, "inventory": inventory_file, "artifacts": test_artifacts, "log": output_log}
     with open(result_file, "w") as _file:
         json.dump(result, _file, indent=4, sort_keys=True, separators=(',', ': '))
 
@@ -135,7 +137,8 @@ if __name__ == "__main__":
     except Exception as exception:
         traceback.print_exc()
         logger.error(str(exception))
-        result = {"status": 1, "inventory": None, "error_reason": str(exception), "log": output_log}
+        result = {"status": 1, "inventory": None, "error_reason": str(exception),
+                  "artifacts": test_artifacts, "log": output_log}
         with open(result_file, "w") as _file:
             json.dump(result, _file, indent=4, sort_keys=True, separators=(',', ': '))
         sys.exit(1)
