@@ -18,8 +18,8 @@ from git import Repo
 global logger
 logger = None
 
-result_file = "checkout-repo-result.json"
-output_log = "checkout-repo.log"
+result_file = "{}/checkout-repo-result.json".format(os.getcwd())
+output_log = "{}/checkout-repo.log".format(os.getcwd())
 
 #pylint: disable=logging-format-interpolation
 

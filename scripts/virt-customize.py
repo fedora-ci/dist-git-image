@@ -18,8 +18,8 @@ import guestfs
 global logger
 logger = None
 
-result_file = "virt-customize-result.json"
-output_log = "virt-customize.log"
+result_file = "{}/virt-customize-result.json".format(os.getcwd())
+output_log = "{}/virt-customize.log".format(os.getcwd())
 
 #pylint: disable=logging-format-interpolation
 
@@ -524,7 +524,8 @@ def main():
     if not qcow2.prepare_qcow2(image, args.release, task_repos, args.task_ids, args.install_rpms, args.sys_update):
         raise Exception("Couldn't prepare qcow2 image")
 
-    result = {"status": 0, "image": image, "log": output_log}
+    image_path = "{}/{}".format(os.getcwd(), image)
+    result = {"status": 0, "image": image_path, "log": output_log}
     with open(result_file, "w") as _file:
         json.dump(result, _file, indent=4, sort_keys=True, separators=(',', ': '))
 

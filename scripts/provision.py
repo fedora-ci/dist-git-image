@@ -14,8 +14,8 @@ import yaml
 global logger
 logger = None
 
-result_file = "provision-result.json"
-output_log = "provision-repo.log"
+result_file = "{}/provision-result.json".format(os.getcwd())
+output_log = "{}/provision-repo.log".format(os.getcwd())
 
 #pylint: disable=logging-format-interpolation
 
@@ -121,7 +121,9 @@ def main():
 
     provision(args.image, args.output)
 
-    result = {"status": 0, "inventory": args.output, "log": output_log}
+    inventory_file = "{}/{}".format(os.getcwd(), args.output)
+
+    result = {"status": 0, "inventory": inventory_file, "log": output_log}
     with open(result_file, "w") as _file:
         json.dump(result, _file, indent=4, sort_keys=True, separators=(',', ': '))
 

@@ -28,8 +28,8 @@ global task_id
 logger = None
 task_id = None
 
-result_file = "create-build-result.json"
-output_log = "create-build.log"
+result_file = "{}/create-build-result.json".format(os.getcwd())
+output_log = "{}/create-build.log".format(os.getcwd())
 
 #pylint: disable=logging-format-interpolation
 
