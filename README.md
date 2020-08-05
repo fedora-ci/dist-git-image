@@ -27,10 +27,10 @@ This script creates an scratch build in koji from a pull request
 * Submit an scratch build from src.rpm
 * Wait scratch build to complete
 
-### provision.py
+### run-playbook.py
 
 * Provision a VM based on qcow2 image using standard-test-roles
-* Safe ansible inventory to a file
+* Run ansible playbook using VM as inventory
 
 ### virt-customize.py
 

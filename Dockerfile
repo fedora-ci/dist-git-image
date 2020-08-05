@@ -23,6 +23,7 @@ RUN for i in {1..5} ; do dnf -y install \
         python3-dnf \
         qemu-img \
         rpm-build \
+        rsync \
         standard-test-roles \
         standard-test-roles-inventory-qemu \
         && dnf clean all \
@@ -37,9 +38,10 @@ VOLUME [ "/sys/fs/cgroup" ]
 COPY ["scripts/virt-customize.py", \
       "scripts/checkout-repo.py", \
       "scripts/create-build.py", \
-      "scripts/provision.py", \
-# Copy necessary files from package-test to the container
-#      "scripts/resize-qcow2.sh", "scripts/sync-artifacts.yml", \
+      "scripts/run-playbook.py", \
+      "playbooks/rpm-verify.yml", \
+      "playbooks/sync-artifacts.yml", \
+#      "scripts/resize-qcow2.sh", \
       "/tmp/"]
 
 # Ansible API changes very often, make sure we run with a version we know it works
