@@ -136,7 +136,7 @@ class Runner():
         self.logger.info("VM is up")
         self.logger.debug("Ansible inventory saved on {}".format(self.inventory_file))
 
-    def run_playbook(self, playbook, extra_vars={}):
+    def run_playbook(self, playbook, extra_vars=None, check_result=False):
         """
         Run an ansible playbook
         """
@@ -145,7 +145,9 @@ class Runner():
         loader = DataLoader()
 
         if extra_vars:
-           extra_vars = set(extra_vars)
+            extra_vars = set(extra_vars)
+        else:
+            extra_vars = {}
 
         context.CLIARGS = ImmutableDict(tags={"classic"}, listtags=False, listtasks=False,
                                         listhosts=False, syntax=False, connection='ssh',
@@ -162,7 +164,7 @@ class Runner():
         passwords = {}
 
         os.environ['TEST_ARTIFACTS'] = self.test_artifacts
-        # TODO: Figure out how to change verbosity and result callback to yaml format
+        # TODO: Figure out how to change verbosity and stdout callback to yaml format
         # TODO: save execution output to file
         # TODO: Run the playbook with 4h timeout
         pbex = PlaybookExecutor(playbooks=[playbook], inventory=inventory, variable_manager=variable_manager, loader=loader, passwords=passwords)
@@ -170,6 +172,23 @@ class Runner():
         self.logger.info("Running playbook {}".format(playbook))
         exit_code = pbex.run()
         self.logger.debug("Playbook {} finished with {}".format(playbook, exit_code))
+
+        if check_result:
+            # check if result matches: https://docs.fedoraproject.org/en-US/ci/standard-test-interface/
+            if not os.path.isfile("{}/test.log".format(self.test_artifacts)):
+                self.logger.error("Playbook finished without creating test.log")
+                exit_code = 1
+
+            result_file = "{}/results.yml".format(self.test_artifacts)
+            if os.path.isfile(result_file):
+                self.logger.debug("parsing results.yml")
+                with open(result_file) as _file:
+                    parsed_yaml = yaml.load(_file, Loader=yaml.FullLoader)
+                for result in parsed_yaml["results"]:
+                    if result['result'] != "pass":
+                        self.logger.debug("{} has result {}, setting whole playbook as failed".format(result['test'], result['result']))
+                        exit_code = 1
+
         return exit_code
 
     def main(self):
@@ -181,10 +200,11 @@ class Runner():
                             help="Path to qcow2 image")
         parser.add_argument("--artifacts", "-a", dest="artifacts", required=True,
                             help="Path to qcow2 image")
-        parser.add_argument("--extra-vars", "-e", dest="extra_vars", required=False,
+        parser.add_argument("--extra-vars", "-e", dest="extra_vars", required=False, default={},
                             action="append", help="Extra ansible variables. 'key=value' format")
         parser.add_argument("--playbook", "-p", dest="playbook", required=True,
                             help="Playbook to run")
+        parser.add_argument("--no-check-result", dest="check_result", action="store_false")
         parser.add_argument("--verbose", "-v", dest="verbose", action="store_true")
         args = parser.parse_args()
 
@@ -194,7 +214,29 @@ class Runner():
 
         self.provision(args.image)
 
-        exit_code = self.run_playbook(args.playbook, args.extra_vars)
+        # back up previous results.yml
+        results_file = "{}/results.yml".format(self.test_artifacts)
+        results_bak_file = "{}/results.yml.bak".format(self.test_artifacts)
+        if os.path.isfile(results_file):
+            self.logger.debug("backing up {}".format(results_file))
+            os.rename(results_file, results_bak_file)
+
+        exit_code = self.run_playbook(args.playbook, args.extra_vars, args.check_result)
+
+        # add new results to old results and save them as results.yml
+        if (os.path.isfile(results_file) and os.path.isfile(results_bak_file)):
+            with open(results_file) as _file:
+                parsed_yaml = yaml.load(_file, Loader=yaml.FullLoader)
+            with open(results_bak_file) as _file:
+                parsed_bak_yaml = yaml.load(_file, Loader=yaml.FullLoader)
+            # add new results to backed up ones
+            self.logger.debug("merging results")
+            for result in parsed_bak_yaml["results"]:
+                parsed_yaml["results"].append(result)
+
+            with open(results_file, "w") as _file:
+                yaml.safe_dump(parsed_yaml, _file)
+            os.remove(results_bak_file)
 
         if exit_code != 0:
             # make sure even if playbooks doesn't fetch logs from VM the artficats is synced
