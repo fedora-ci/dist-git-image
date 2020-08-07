@@ -179,15 +179,29 @@ class Runner():
                 self.logger.error("Playbook finished without creating test.log")
                 exit_code = 1
 
-            result_file = "{}/results.yml".format(self.test_artifacts)
-            if os.path.isfile(result_file):
-                self.logger.debug("parsing results.yml")
-                with open(result_file) as _file:
-                    parsed_yaml = yaml.load(_file, Loader=yaml.FullLoader)
-                for result in parsed_yaml["results"]:
-                    if result['result'] != "pass":
-                        self.logger.debug("{} has result {}, setting whole playbook as failed".format(result['test'], result['result']))
-                        exit_code = 1
+            results_yml_file = "{}/results.yml".format(self.test_artifacts)
+            if not os.path.isfile(results_yml_file):
+                self.logger.debug("playbook didn't create results.yml, creating one...")
+                # playbook didn't create results.yml, so create one
+                test_result = {}
+                test_result['test'] = os.path.splitext(os.path.basename(playbook))[0]
+                test_result['logs'] = [self.test_artifacts]
+                if exit_code == 0:
+                    test_result['result'] = "pass"
+                else:
+                    test_result['result'] = "fail"
+                result = {}
+                result['results'] = [test_result]
+                with open(results_yml_file, "w") as _file:
+                    yaml.safe_dump(result, _file)
+
+            self.logger.debug("parsing results.yml")
+            with open(results_yml_file) as _file:
+                parsed_yaml = yaml.load(_file, Loader=yaml.FullLoader)
+            for result in parsed_yaml["results"]:
+                if result['result'] != "pass":
+                    self.logger.debug("{} has result {}, setting whole playbook as failed".format(result['test'], result['result']))
+                    exit_code = 1
 
         return exit_code
 
