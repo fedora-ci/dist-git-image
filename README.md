@@ -37,7 +37,25 @@ This script creates an scratch build in koji from a pull request
 This script prepares a qcow2 image to be used by the pipeline
 
 * Download the base Fedora Qcow2 image for the release
-* Download the rpms from specified Koji task ids
-* Copy those rpms and enable them as repositories in the qcow2
+* Download the rpms from specified Koji task ids (optional)
+    * Copy those rpms and enable them as repositories in the qcow2
 * Install the rpms in the qcow2 (optional)
 * Update the system (optional)
+
+## Example how to run tests locally
+
+1. Start the container
+
+    `podman run -it --rm --privileged quay.io/bgoncalv/fedoraci-dist-git`
+
+2. Clone repository with tests
+
+    `python3 /tmp/checkout-repo.py --repo ksh`
+
+3. Prepare qcow2
+
+    `python3 /tmp/virt-customize.py --release rawhide`
+
+4. Run the tests
+    * `cd ksh/tests`
+    * `python3 /tmp/run-playbook.py --image /Fedora-Rawhide.qcow2 --playbook tests.yml --artifact ./artifacts`

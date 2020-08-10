@@ -105,7 +105,7 @@ def download_qcow2(release):
     logger.info("Downloading {}".format(url))
     # NOTE: I couldn't find a python way to do this curl command using requests or urllib.request.urlretrieve
     # at least not one that would work as reliable
-    curl_cmd = "curl --fail --connect-timeout 5 --retry 10 --retry-delay 0 --retry-max-time 60 -L -k -O {}".format(url)
+    curl_cmd = "curl --fail --connect-timeout 5 --retry 10 --retry-delay 0 --retry-max-time 60 -C - -L -k -O {}".format(url)
     logger.debug("Running {}".format(curl_cmd))
     try:
         result_run = subprocess.run(curl_cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)

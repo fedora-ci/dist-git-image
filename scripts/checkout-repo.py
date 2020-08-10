@@ -166,8 +166,10 @@ def main():
                         default="https://src.fedoraproject.org", help="Ex: https://src.fedoraproject.org")
     parser.add_argument("--repo", "-r", dest="repo", required=True,
                         help="Pagure repository name")
-    parser.add_argument("--branch", "-b", dest="branch", required=True, help="Pagure branch")
-    parser.add_argument("--namespace", "-n", dest="namespace", required=True, help="Pagure namespace")
+    parser.add_argument("--branch", "-b", dest="branch", required=False,
+                        default="master", help="Pagure branch")
+    parser.add_argument("--namespace", "-n", dest="namespace", required=False,
+                        default="rpms", help="Pagure namespace")
     parser.add_argument("--pr", "-p", dest="pr", help="Pagure pull request number")
     parser.add_argument("--verbose", "-v", dest="verbose", action="store_true")
     args = parser.parse_args()
