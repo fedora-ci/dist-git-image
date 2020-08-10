@@ -16,10 +16,11 @@ import yaml
 from ansible import context
 from ansible.cli import CLI
 from ansible.module_utils.common.collections import ImmutableDict
-from ansible.executor.playbook_executor import PlaybookExecutor
+from ansible.executor import playbook_executor
 from ansible.parsing.dataloader import DataLoader
 from ansible.inventory.manager import InventoryManager
 from ansible.vars.manager import VariableManager
+from ansible.utils.display import Display
 
 #pylint: disable=logging-format-interpolation
 
@@ -170,9 +171,9 @@ class Runner():
         passwords = {}
 
         os.environ['TEST_ARTIFACTS'] = self.test_artifacts
-        # TODO: Figure out how to change verbosity and stdout callback to yaml format
         # TODO: save execution output to file
-        pbex = PlaybookExecutor(playbooks=[playbook], inventory=inventory, variable_manager=variable_manager, loader=loader, passwords=passwords)
+        pbex = playbook_executor.PlaybookExecutor(playbooks=[playbook], inventory=inventory, variable_manager=variable_manager, loader=loader, passwords=passwords)
+        pbex._tqm._stdout_callback = "yaml" #pylint: disable=protected-access
 
         self.logger.info("Running playbook {}".format(playbook))
         # https://stackoverflow.com/questions/10415028/how-can-i-recover-the-return-value-of-a-function-passed-to-multiprocessing-proce
@@ -188,7 +189,10 @@ class Runner():
             run_process.join()
             exit_code = 1
         else:
-            exit_code = return_dict["exit_code"]
+            if "exit_code" in return_dict:
+                exit_code = return_dict["exit_code"]
+            else:
+                exit_code = 1
         self.logger.debug("Playbook {} finished with {}".format(playbook, exit_code))
 
         if check_result:
@@ -242,6 +246,12 @@ class Runner():
 
         self.configure_logging(verbose=args.verbose, output_file=self.output_log)
 
+        # https://serversforhackers.com/c/running-ansible-2-programmatically
+        self.display = Display()
+        verbosity = 1
+        self.display.verbosity = verbosity
+        playbook_executor.verbosity = verbosity
+
         self.test_artifacts = args.artifacts
 
         self.provision(args.image)
@@ -271,6 +281,7 @@ class Runner():
             os.remove(results_bak_file)
 
         if exit_code != 0:
+            self.display.verbosity = 0
             # make sure even if playbooks doesn't fetch logs from VM the artficats is synced
             self.run_playbook("/tmp/sync-artifacts.yml")
 
