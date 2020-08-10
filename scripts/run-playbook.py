@@ -170,7 +170,8 @@ class Runner():
 
         passwords = {}
 
-        os.environ['TEST_ARTIFACTS'] = self.test_artifacts
+        os.environ['TEST_ARTIFACTS'] = os.path.abspath(self.test_artifacts)
+        self.logger.debug("TEST_ARTIFACTS = {}".format(os.environ['TEST_ARTIFACTS']))
         # TODO: save execution output to file
         pbex = playbook_executor.PlaybookExecutor(playbooks=[playbook], inventory=inventory, variable_manager=variable_manager, loader=loader, passwords=passwords)
         pbex._tqm._stdout_callback = "yaml" #pylint: disable=protected-access
