@@ -7,6 +7,7 @@ import logging
 import os
 import sys
 import traceback
+import multiprocessing
 import time
 import subprocess
 import json
@@ -28,6 +29,10 @@ def _destroy_vm():
         subprocess.run(kill_cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
     except subprocess.CalledProcessError:
         pass
+
+def _run_pbex(pbex, return_dict):
+    return_dict["exit_code"] = pbex.run()
+
 
 class Runner():
     """
@@ -166,11 +171,23 @@ class Runner():
         os.environ['TEST_ARTIFACTS'] = self.test_artifacts
         # TODO: Figure out how to change verbosity and stdout callback to yaml format
         # TODO: save execution output to file
-        # TODO: Run the playbook with 4h timeout
         pbex = PlaybookExecutor(playbooks=[playbook], inventory=inventory, variable_manager=variable_manager, loader=loader, passwords=passwords)
 
         self.logger.info("Running playbook {}".format(playbook))
-        exit_code = pbex.run()
+        # https://stackoverflow.com/questions/10415028/how-can-i-recover-the-return-value-of-a-function-passed-to-multiprocessing-proce
+        manager = multiprocessing.Manager()
+        return_dict = manager.dict()
+        run_process = multiprocessing.Process(target=_run_pbex, args=(pbex, return_dict))
+        run_process.start()
+        # run playbook with timeout of 4hrs
+        run_process.join(4*60*60)
+        if run_process.is_alive():
+            self.logger.error("Playbook has been running for too long. Aborting it.")
+            run_process.terminate()
+            run_process.join()
+            exit_code = 1
+        else:
+            exit_code = return_dict["exit_code"]
         self.logger.debug("Playbook {} finished with {}".format(playbook, exit_code))
 
         if check_result:
