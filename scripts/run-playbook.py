@@ -39,12 +39,15 @@ class Runner():
     """
     Class to run ansible playbook on a VM
     """
-    result_file = "{}/run-playbook-result.json".format(os.getcwd())
-    output_log = "{}/run-playbook.log".format(os.getcwd())
-    test_artifacts = "{}/artifacts".format(os.getcwd())
-    inventory_file = "{}/pipeline_inventory.yaml".format(os.getcwd())
-    result = {"status": 1, "inventory": inventory_file,
-              "artifacts": test_artifacts, "log": output_log}
+
+    test_artifacts = None
+    result_file = None
+    output_log = None
+    inventory_file = None
+    result = {}
+
+    # https://serversforhackers.com/c/running-ansible-2-programmatically
+    display = Display()
 
     def __init__(self):
         self.logger = None
@@ -245,15 +248,22 @@ class Runner():
         parser.add_argument("--verbose", "-v", dest="verbose", action="store_true")
         args = parser.parse_args()
 
+        if not os.path.isdir(args.artifacts):
+            os.mkdir(args.artifacts)
+
+        self.test_artifacts = os.path.abspath(args.artifacts)
+        self.result_file = "{}/run-playbook-result.json".format(self.test_artifacts)
+        self.output_log = "{}/run-playbook.log".format(self.test_artifacts)
+        self.inventory_file = "{}/pipeline_inventory.yaml".format(self.test_artifacts)
+
+        self.result = {"status": 1, "inventory": self.inventory_file,
+                       "artifacts": self.test_artifacts, "log": self.output_log}
+
         self.configure_logging(verbose=args.verbose, output_file=self.output_log)
 
-        # https://serversforhackers.com/c/running-ansible-2-programmatically
-        self.display = Display()
         verbosity = 1
         self.display.verbosity = verbosity
         playbook_executor.verbosity = verbosity
-
-        self.test_artifacts = args.artifacts
 
         self.provision(args.image)
 
