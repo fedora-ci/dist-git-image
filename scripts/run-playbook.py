@@ -237,7 +237,7 @@ class Runner():
                             help="Path to qcow2 image")
         parser.add_argument("--artifacts", "-a", dest="artifacts", required=True,
                             help="Path to qcow2 image")
-        parser.add_argument("--extra-vars", "-e", dest="extra_vars", required=False, default={},
+        parser.add_argument("--extra-vars", "-e", dest="extra_vars", required=False,
                             action="append", help="Extra ansible variables. 'key=value' format")
         parser.add_argument("--playbook", "-p", dest="playbook", required=True,
                             help="Playbook to run")
