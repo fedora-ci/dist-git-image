@@ -39,15 +39,13 @@ COPY ["scripts/virt-customize.py", \
       "scripts/checkout-repo.py", \
       "scripts/create-build.py", \
       "scripts/run-playbook.py", \
+      "scripts/resize-qcow2.sh", \
       "playbooks/rpm-verify.yml", \
       "playbooks/sync-artifacts.yml", \
-#      "scripts/resize-qcow2.sh", \
       "/tmp/"]
 
 # Ansible API changes very often, make sure we run with a version we know it works
 RUN pip-3 install ansible==2.8.0
-
-ENV ANSIBLE_INVENTORY=/usr/share/ansible/inventory/standard-inventory-qcow2
 
 ENTRYPOINT ["bash"]
 #

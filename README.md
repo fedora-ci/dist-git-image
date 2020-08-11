@@ -27,6 +27,10 @@ This script creates an scratch build in koji from a pull request
 * Submit an scratch build from src.rpm
 * Wait scratch build to complete
 
+### resize-qcow2.sh
+
+* Script used to expand the filesystem on qcow2 image
+
 ### run-playbook.py
 
 * Provision a VM based on qcow2 image using standard-test-roles
@@ -39,7 +43,7 @@ This script prepares a qcow2 image to be used by the pipeline
 * Download the base Fedora Qcow2 image for the release
 * Download the rpms from specified Koji task ids (optional)
     * Copy those rpms and enable them as repositories in the qcow2
-* Install the rpms in the qcow2 (optional)
+    * Install the rpms in the qcow2 (optional)
 * Update the system (optional)
 
 ## Example how to run tests locally
