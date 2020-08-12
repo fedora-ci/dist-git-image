@@ -95,30 +95,34 @@ def download_qcow2(release):
     else:
         raise Exception("Unsupported release {}".format(release))
 
-    qcow2_file = url.split("/")[-1]
+    qcow2_file = "{}/{}".format(this.artifacts, url.split("/")[-1])
     if  os.path.isfile(qcow2_file):
         this.logger.info("{} already exists, no need to download.".format(qcow2_file))
         return qcow2_file
 
     this.logger.info("Downloading {}".format(url))
+    this.logger.debug("qcow2 will be saved to {}".format(qcow2_file))
     # NOTE: I couldn't find a python way to do this curl command using requests or urllib.request.urlretrieve
     # at least not one that would work as reliable
     curl_cmd = "curl --fail --connect-timeout 5 --retry 10 --retry-delay 0 --retry-max-time 60 -C - -L -k -O {}".format(url)
     this.logger.debug("Running {}".format(curl_cmd))
     try:
-        result_run = subprocess.run(curl_cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        result_run = subprocess.run(curl_cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                    cwd=this.artifacts, check=True)
     except subprocess.CalledProcessError as exception:
         if exception.stderr:
             this.logger.info(exception.stderr)
         if exception.stdout:
             this.logger.info(exception.stdout)
         if os.path.isfile(qcow2_file):
+            this.logger.debug("removing partial qcow2 {}".format(qcow2_file))
             os.remove(qcow2_file)
         raise Exception("Couldn't download qcow2") from None
     if result_run.stderr:
         this.logger.info(result_run.stderr)
     if result_run.stdout:
         this.logger.info(result_run.stdout)
+    this.logger.debug("qcow2 is available on {}".format(qcow2_file))
     return qcow2_file
 
 
@@ -187,7 +191,7 @@ class Koji():
                       'scratch' in taskinfo['request'][2] and
                       taskinfo['request'][2]['scratch'])
         if is_scratch:
-            cmd = "koji {0} download-task --arch=x86_64 --arch=src --arch=noarch --logs {1}".format(self.koji_params, task_id)
+            cmd = "koji {0} download-task --arch=x86_64 --arch=src --arch=noarch {1}".format(self.koji_params, task_id)
         else:
             cmd = "koji {0} download-build --arch=x86_64 --arch=src --arch=noarch --debuginfo --task-id {1}".format(self.koji_params, task_id)
         if os.path.isdir(task_repo):
@@ -264,7 +268,7 @@ class Qcow2():
             task_repo += "enabled=1\n"
             task_repo += "gpgcheck=0\n"
 
-            test_repo = "test-{}.repo".format(name)
+            test_repo = "{}/test-{}.repo".format(this.artifacts, name)
             with open(test_repo, "w") as _file:
                 _file.write(task_repo)
             try:
@@ -294,7 +298,7 @@ class Qcow2():
         koji_latest_repo = "enabled=1\n"
         koji_latest_repo = "gpgcheck=0\n"
 
-        koji_latest_repo_file = "koji-latest.repo"
+        koji_latest_repo_file = "{}/koji-latest.repo".format(this.artifacts)
         with open(koji_latest_repo_file, "w") as _file:
             _file.write(koji_latest_repo)
         try:
@@ -490,8 +494,8 @@ def main():
                         help="Ex: rawhide or f33")
     parser.add_argument("--task-id", "-t", dest="task_ids", action="append",
                         type=int, help="TaskID of rpms to be installed on qcow2")
-    parser.add_argument("--logs", "-l", dest="logs", default="./",
-                        help="Path where logs will be stored")
+    parser.add_argument("--artifacts", "-a", dest="artifacts", default="./",
+                        help="Path where logs, qcow2 and other files will be stored")
     parser.add_argument("--install-rpms", dest="install_rpms", action="store_true")
     parser.add_argument("--no-sys-update", dest="sys_update", action="store_false")
     parser.add_argument("--verbose", "-v", dest="verbose", action="store_true")
@@ -499,12 +503,12 @@ def main():
 
     args.release = args.release.lower()
 
-    if not os.path.isdir(args.logs):
-        os.makedirs(args.logs)
+    if not os.path.isdir(args.artifacts):
+        os.makedirs(args.artifacts)
 
-    logs = os.path.abspath(args.logs)
-    this.result_file = "{}/virt-customize-result.json".format(logs)
-    this.output_log = "{}/virt-customize.log".format(logs)
+    this.artifacts = os.path.abspath(args.artifacts)
+    this.result_file = "{}/virt-customize-result.json".format(this.artifacts)
+    this.output_log = "{}/virt-customize.log".format(this.artifacts)
 
     configure_logging(verbose=args.verbose, output_file=this.output_log)
 
@@ -512,7 +516,7 @@ def main():
     mykoji = Koji()
     if args.task_ids:
         for task_id in args.task_ids:
-            base_path = "task_repos"
+            base_path = "{}/task_repos".format(this.artifacts)
             task_repo = "{}/{}".format(base_path, task_id)
             mykoji.download_task(task_id, task_repo)
             create_repo(task_repo)
@@ -529,7 +533,7 @@ def main():
     if not qcow2.prepare_qcow2(image, args.release, task_repos, args.task_ids, args.install_rpms, args.sys_update):
         raise Exception("Couldn't prepare qcow2 image")
 
-    image_path = "{}/{}".format(os.getcwd(), image)
+    image_path = image
     this.result = {"status": 0, "image": image_path, "log": this.output_log}
     with open(this.result_file, "w") as _file:
         json.dump(this.result, _file, indent=4, sort_keys=True, separators=(',', ': '))
