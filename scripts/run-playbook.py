@@ -239,7 +239,7 @@ class Runner():
         parser.add_argument("--image", "-i", dest="image", required=True,
                             help="Path to qcow2 image")
         parser.add_argument("--artifacts", "-a", dest="artifacts", required=True,
-                            help="Path to qcow2 image")
+                            help="Path where logs and tests results will be stored")
         parser.add_argument("--extra-vars", "-e", dest="extra_vars", required=False,
                             action="append", help="Extra ansible variables. 'key=value' format")
         parser.add_argument("--playbook", "-p", dest="playbook", required=True,
@@ -249,7 +249,7 @@ class Runner():
         args = parser.parse_args()
 
         if not os.path.isdir(args.artifacts):
-            os.mkdir(args.artifacts)
+            os.makedirs(args.artifacts)
 
         self.test_artifacts = os.path.abspath(args.artifacts)
         self.result_file = "{}/run-playbook-result.json".format(self.test_artifacts)
