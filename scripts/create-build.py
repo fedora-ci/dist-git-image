@@ -49,14 +49,6 @@ def _query_url(url, retry=10):
     print("Could not connect to %s" % url)
     return None
 
-def _rawhide_dist_number():
-    url = "https://src.fedoraproject.org/rpms/fedora-release/raw/master/f/fedora-release.spec"
-    response = _query_url(url)
-    for line in response.split("\n"):
-        match = re.match(r"%define dist_version\s+(\S+)$", line)
-        if match:
-            return match.group(1)
-    return None
 
 def configure_logging(verbose=False, output_file=None):
     """Configure logging
@@ -208,7 +200,6 @@ def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument("--repo", "-r", dest="repo", required=True,
                         help="directory with repo spec file")
-    parser.add_argument("--dist-ver", "-d", dest="dist_ver", required=True, help="ex: f33")
     parser.add_argument("--release", dest="release", help="Release. Ex: f32 or rawhide")
     parser.add_argument("--logs", "-l", dest="logs", default="./",
                         help="Path where logs will be stored")
@@ -223,8 +214,10 @@ def main():
     this.result_file = "{}/create-build-result.json".format(logs)
     this. output_log = "{}/create-build.log".format(logs)
 
-    dist_ver = args.dist_ver.lower()
     release = args.release.lower()
+
+    if release == "rawhide":
+        dist_ver = "master"
 
     configure_logging(verbose=args.verbose, output_file=this.output_log)
 
