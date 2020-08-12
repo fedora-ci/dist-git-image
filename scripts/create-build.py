@@ -23,13 +23,13 @@ from koji_cli.lib import (
     unique_path
 )
 
-global logger
-global task_id
-logger = None
-task_id = None
+this = sys.modules[__name__]
 
-result_file = "{}/create-build-result.json".format(os.getcwd())
-output_log = "{}/create-build.log".format(os.getcwd())
+this.task_id = None
+this.logger = None
+
+this.result_file = None
+this.output_log = None
 
 #pylint: disable=logging-format-interpolation
 
@@ -65,22 +65,21 @@ def configure_logging(verbose=False, output_file=None):
     Return logger object.
     """
 
-    global logger
-    logger = logging.getLogger(__name__)
+    this.logger = logging.getLogger(__name__)
 
     logger_lvl = logging.INFO
 
     if verbose:
         logger_lvl = logging.DEBUG
 
-    logger.setLevel(logger_lvl)
+    this.logger.setLevel(logger_lvl)
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
 
     formatter = logging.Formatter("%(levelname)s: %(message)s")
     ch.setFormatter(formatter)
-    logger.addHandler(ch)
+    this.logger.addHandler(ch)
 
 
     if output_file:
@@ -89,11 +88,11 @@ def configure_logging(verbose=False, output_file=None):
         output_fh = logging.FileHandler(output_file)
         output_fh.setLevel(logger_lvl)
         output_fh.setFormatter(formatter)
-        logger.addHandler(output_fh)
+        this.logger.addHandler(output_fh)
 
     # #To allow stdout redirect
-    logger.write = lambda msg: logger.info(msg) if msg != '\n' else None
-    logger.flush = lambda: None
+    this.logger.write = lambda msg: this.logger.info(msg) if msg != '\n' else None
+    this.logger.flush = lambda: None
 
 
 class Koji():
@@ -104,11 +103,11 @@ class Koji():
         self.hub = koji.ClientSession("https://koji.fedoraproject.org/kojihub")
         keytab = os.getenv('KOJI_KEYTAB')
         if keytab:
-            logger.debug("Authenticating to keytab")
+            this.logger.debug("Authenticating to keytab")
             try:
                 self.hub.gssapi_login(keytab=keytab)
             except Exception as exception:
-                logger.err(str(exception))
+                this.logger.err(str(exception))
                 raise Exception("Couldn't authenticate using keytab")
 
 
@@ -116,19 +115,20 @@ class Koji():
         """
         Build scratch build from specific repo
         """
-        logger.info("Bulding src...")
+        this.logger.info("Bulding src...")
         current_dir = os.getcwd()
         os.chdir(repo)
         cmd = "fedpkg --release {} srpm".format(dist_ver)
-        logger.debug("Running {}".format(cmd))
+        this.logger.debug("Running {}".format(cmd))
         try:
-            subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE, check=True)
         except subprocess.CalledProcessError as exception:
-            logger.error(str(exception))
+            this.logger.error(str(exception))
             if exception.stderr:
-                logger.debug(exception.stderr)
+                this.logger.debug(exception.stderr)
             if exception.stdout:
-                logger.debug(exception.stdout)
+                this.logger.debug(exception.stdout)
             os.chdir(current_dir)
             raise Exception("Couldn't create src.rpm") from None
 
@@ -138,11 +138,11 @@ class Koji():
             raise Exception("Couldn't find src.rpm file")
 
         source = srpms[0]
-        logger.debug("Going to upload {}".format(source))
+        this.logger.debug("Going to upload {}".format(source))
         serverdir = unique_path('cli-build')
         # callback = _progress_callback
         callback = None
-        logger.debug("uploading {} to {}".format(source, serverdir))
+        this.logger.debug("uploading {} to {}".format(source, serverdir))
         max_retry = 5
         attempt = 1
         while True:
@@ -151,16 +151,16 @@ class Koji():
             except Exception as exception:
                 attempt += 1
                 if attempt > max_retry:
-                    logger.error(str(exception))
+                    this.logger.error(str(exception))
                     os.chdir(current_dir)
                     raise Exception("Failed uploading {}".format(source)) from None
                 time.sleep(10)
-                logger.info("Retrying to upload {}. Attempt {}/{}".format(source, attempt, max_retry))
+                this.logger.info("Retrying to upload {}. Attempt {}/{}".format(source, attempt, max_retry))
                 continue
             break
         source = "%s/%s" % (serverdir, os.path.basename(source))
 
-        logger.info("Building scratch build for {}".format(source))
+        this.logger.info("Building scratch build for {}".format(source))
         opts = {"scratch": True, "arch_override": "x86_64"}
         try:
             _task_id = self.hub.build(src=source, target=release, opts=opts)
@@ -168,7 +168,7 @@ class Koji():
             os.chdir(current_dir)
             raise exception from None
         except Exception as exception:
-            logger.error(str(exception))
+            this.logger.error(str(exception))
             os.chdir(current_dir)
             raise Exception("Failed building scratch build") from None
 
@@ -182,23 +182,23 @@ class Koji():
         Wait until koji finsihes building task
         """
         while True:
-            with redirect_stdout(logger):
+            with redirect_stdout(this.logger):
                 watch_tasks(self.hub, [task_id], poll_interval=10)
             taskinfo = self.hub.getTaskInfo(task_id)
             state = taskinfo['state']
 
             # /usr/lib/python3.8/site-packages/koji_cli/lib.py
             if state == koji.TASK_STATES['CLOSED']:
-                logger.info("task completed successfully")
+                this.logger.info("task completed successfully")
                 return True
             if state == koji.TASK_STATES['FAILED']:
-                logger.info("task failed")
+                this.logger.info("task failed")
                 return False
             if state == koji.TASK_STATES['CANCELED']:
-                logger.info("was canceled")
+                this.logger.info("was canceled")
                 return False
             # shouldn't happen
-            logger.info("task has not completed yet")
+            this.logger.info("task has not completed yet")
 
 
 def main():
@@ -210,24 +210,32 @@ def main():
                         help="directory with repo spec file")
     parser.add_argument("--dist-ver", "-d", dest="dist_ver", required=True, help="ex: f33")
     parser.add_argument("--release", dest="release", help="Release. Ex: f32 or rawhide")
+    parser.add_argument("--logs", "-l", dest="logs", default="./",
+                        help="Path where logs will be stored")
     parser.add_argument("--verbose", "-v", dest="verbose", action="store_true")
     args = parser.parse_args()
 
+    if not os.path.isdir(args.logs):
+        os.makedirs(args.logs)
+
+    logs = os.path.abspath(args.logs)
+
+    this.result_file = "{}/create-build-result.json".format(logs)
+    this. output_log = "{}/create-build.log".format(logs)
 
     dist_ver = args.dist_ver.lower()
     release = args.release.lower()
 
-    configure_logging(verbose=args.verbose, output_file=output_log)
+    configure_logging(verbose=args.verbose, output_file=this.output_log)
 
     mykoji = Koji()
-    global task_id
-    task_id = mykoji.create_build(args.repo, dist_ver, release)
-    if not mykoji.wait_task_complete(task_id):
+    this.task_id = mykoji.create_build(args.repo, dist_ver, release)
+    if not mykoji.wait_task_complete(this.task_id):
         raise Exception("There was some problem creating scratch build")
 
-    result = {"status": 0, "task_id": task_id, "log": output_log}
-    with open(result_file, "w") as _file:
-        json.dump(result, _file, indent=4, sort_keys=True, separators=(',', ': '))
+    this.result = {"status": 0, "task_id": this.task_id, "log": this.output_log}
+    with open(this.result_file, "w") as _file:
+        json.dump(this.result, _file, indent=4, sort_keys=True, separators=(',', ': '))
 
 
 if __name__ == "__main__":
@@ -235,10 +243,11 @@ if __name__ == "__main__":
         main()
     except Exception as exception:
         traceback.print_exc()
-        logger.error(str(exception))
-        result = {"status": 1, "task_id": task_id, "error_reason": str(exception), "log": output_log}
-        with open(result_file, "w") as _file:
-            json.dump(result, _file, indent=4, sort_keys=True, separators=(',', ': '))
+        this.logger.error(str(exception))
+        this.result = {"status": 1, "task_id": this.task_id, "error_reason": str(exception),
+                       "log": this.output_log}
+        with open(this.result_file, "w") as _file:
+            json.dump(this.result, _file, indent=4, sort_keys=True, separators=(',', ': '))
         sys.exit(1)
 
     sys.exit(0)
