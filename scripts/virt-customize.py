@@ -15,11 +15,12 @@ import requests
 import koji
 import guestfs
 
-global logger
-logger = None
+this = sys.modules[__name__]
 
-result_file = "{}/virt-customize-result.json".format(os.getcwd())
-output_log = "{}/virt-customize.log".format(os.getcwd())
+this.logger = None
+
+this.result_file = None
+this.output_log = None
 
 #pylint: disable=logging-format-interpolation
 
@@ -55,22 +56,21 @@ def configure_logging(verbose=False, output_file=None):
     Return logger object.
     """
 
-    global logger
-    logger = logging.getLogger(__name__)
+    this.logger = logging.getLogger(__name__)
 
     logger_lvl = logging.INFO
 
     if verbose:
         logger_lvl = logging.DEBUG
 
-    logger.setLevel(logger_lvl)
+    this.logger.setLevel(logger_lvl)
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
 
     formatter = logging.Formatter("%(levelname)s: %(message)s")
     ch.setFormatter(formatter)
-    logger.addHandler(ch)
+    this.logger.addHandler(ch)
 
 
     if output_file:
@@ -79,9 +79,7 @@ def configure_logging(verbose=False, output_file=None):
         output_fh = logging.FileHandler(output_file)
         output_fh.setLevel(logger_lvl)
         output_fh.setFormatter(formatter)
-        logger.addHandler(output_fh)
-
-    return logger
+        this.logger.addHandler(output_fh)
 
 def download_qcow2(release):
     """
@@ -99,28 +97,28 @@ def download_qcow2(release):
 
     qcow2_file = url.split("/")[-1]
     if  os.path.isfile(qcow2_file):
-        logger.info("{} already exists, no need to download.".format(qcow2_file))
+        this.logger.info("{} already exists, no need to download.".format(qcow2_file))
         return qcow2_file
 
-    logger.info("Downloading {}".format(url))
+    this.logger.info("Downloading {}".format(url))
     # NOTE: I couldn't find a python way to do this curl command using requests or urllib.request.urlretrieve
     # at least not one that would work as reliable
     curl_cmd = "curl --fail --connect-timeout 5 --retry 10 --retry-delay 0 --retry-max-time 60 -C - -L -k -O {}".format(url)
-    logger.debug("Running {}".format(curl_cmd))
+    this.logger.debug("Running {}".format(curl_cmd))
     try:
         result_run = subprocess.run(curl_cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
     except subprocess.CalledProcessError as exception:
         if exception.stderr:
-            logger.info(exception.stderr)
+            this.logger.info(exception.stderr)
         if exception.stdout:
-            logger.info(exception.stdout)
+            this.logger.info(exception.stdout)
         if os.path.isfile(qcow2_file):
             os.remove(qcow2_file)
         raise Exception("Couldn't download qcow2") from None
     if result_run.stderr:
-        logger.info(result_run.stderr)
+        this.logger.info(result_run.stderr)
     if result_run.stdout:
-        logger.info(result_run.stdout)
+        this.logger.info(result_run.stdout)
     return qcow2_file
 
 
@@ -131,42 +129,42 @@ def verify_qcow2(image):
     if not os.path.isfile(image):
         raise Exception("{} doesn't exist".format(image))
 
-    logger.info("Verifying {}".format(image))
+    this.logger.info("Verifying {}".format(image))
     try:
         cmd = ["qemu-img", "check", image]
         result_run = subprocess.run(cmd, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
     except subprocess.CalledProcessError as exception:
-        logger.error(str(exception))
+        this.logger.error(str(exception))
         if exception.stderr:
-            logger.info(exception.stderr)
+            this.logger.info(exception.stderr)
         if exception.stdout:
-            logger.info(exception.stdout)
+            this.logger.info(exception.stdout)
         raise Exception("Couldn't verify qcow2 image") from None
     if result_run.stderr:
-        logger.debug(result_run.stderr)
+        this.logger.debug(result_run.stderr)
     if result_run.stdout:
-        logger.debug(result_run.stdout)
+        this.logger.debug(result_run.stdout)
     return True
 
 def create_repo(repo):
     """
     Creates an rpm repository on provided path
     """
-    logger.debug("Creating repo for {}".format(repo))
+    this.logger.debug("Creating repo for {}".format(repo))
     cmd = "createrepo ."
     try:
         result_run = subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=repo, check=True)
     except subprocess.CalledProcessError as exception:
-        logger.error(str(exception))
+        this.logger.error(str(exception))
         if exception.stderr:
-            logger.debug(exception.stderr)
+            this.logger.debug(exception.stderr)
         if exception.stdout:
-            logger.debug(exception.stdout)
+            this.logger.debug(exception.stdout)
         raise Exception("Couldn't create repo")
     if result_run.stderr:
-        logger.debug(result_run.stderr)
+        this.logger.debug(result_run.stderr)
     if result_run.stdout:
-        logger.debug(result_run.stdout)
+        this.logger.debug(result_run.stdout)
     return True
 
 
@@ -192,29 +190,26 @@ class Koji():
             cmd = "koji {0} download-task --arch=x86_64 --arch=src --arch=noarch --logs {1}".format(self.koji_params, task_id)
         else:
             cmd = "koji {0} download-build --arch=x86_64 --arch=src --arch=noarch --debuginfo --task-id {1}".format(self.koji_params, task_id)
-#        try:
-#            shutil.rmtree(task_repo)
-#        except FileNotFoundError:
-#            pass
         if os.path.isdir(task_repo):
-            logger.info("{} already exists, assume rpms are already downloaded. Skipping...".format(task_repo))
+            this.logger.info("{} already exists, assume rpms are already downloaded. Skipping...".format(task_repo))
             return True
         os.makedirs(task_repo)
-        logger.info("Downloading rpms from {}".format(task_id))
-        logger.debug("Running {}".format(cmd))
+
+        this.logger.info("Downloading rpms from {}".format(task_id))
+        this.logger.debug("Running {}".format(cmd))
         try:
             result_run = subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=task_repo, check=True)
         except subprocess.CalledProcessError as exception:
-            logger.error(str(exception))
+            this.logger.error(str(exception))
             if exception.stderr:
-                logger.debug(exception.stderr)
+                this.logger.debug(exception.stderr)
             if exception.stdout:
-                logger.debug(exception.stdout)
+                this.logger.debug(exception.stdout)
             raise Exception("Couldn't download task rpms")
         if result_run.stderr:
-            logger.debug(result_run.stderr)
+            this.logger.debug(result_run.stderr)
         if result_run.stdout:
-            logger.debug(result_run.stdout)
+            this.logger.debug(result_run.stdout)
         return True
 
 
@@ -240,7 +235,7 @@ class Qcow2():
                 try:
                     self.g.mount(mnt_points[mnt_point], mnt_point)
                 except RuntimeError as exception:
-                    logger.error(str(exception))
+                    this.logger.error(str(exception))
                     raise Exception("Couldn't mount {} to {}".format(mnt_points[mnt_point], mnt_point))
         return True
 
@@ -250,16 +245,16 @@ class Qcow2():
         create a dnf repo file for each repo
         """
         if not task_repos:
-            logger.debug("no task repos provided, skipping...")
+            this.logger.debug("no task repos provided, skipping...")
             return True
 
         self.g.mkdir_p(self.dest_base_repo_path)
-        logger.info("Copying task repos to qcow2")
+        this.logger.info("Copying task repos to qcow2")
         for repo in task_repos:
             try:
                 self.g.copy_in(repo, self.dest_base_repo_path)
             except RuntimeError as exception:
-                logger.error(str(exception))
+                this.logger.error(str(exception))
                 raise Exception("Couldn't copy {} to {}".format(repo, self.dest_base_repo_path))
             name = os.path.basename(repo)
             task_repo = "[test-{}]\n".format(name)
@@ -275,11 +270,11 @@ class Qcow2():
             try:
                 self.g.copy_in(test_repo, "/etc/yum.repos.d")
             except RuntimeError as exception:
-                logger.error(str(exception))
+                this.logger.error(str(exception))
                 raise Exception("Couldn't copy {} to {}".format(test_repo, "/etc/yum.repos.d"))
 
-        logger.debug("repo {} copied to {}".format(name, self.dest_base_repo_path))
-        logger.debug("file {} copied to {}".format(test_repo, "/etc/yum.repos.d"))
+        this.logger.debug("repo {} copied to {}".format(name, self.dest_base_repo_path))
+        this.logger.debug("file {} copied to {}".format(test_repo, "/etc/yum.repos.d"))
         return True
 
     def _add_latest_repo(self, release):
@@ -305,27 +300,27 @@ class Qcow2():
         try:
             self.g.copy_in(koji_latest_repo_file, "/etc/yum.repos.d/")
         except RuntimeError as exception:
-            logger.error(str(exception))
+            this.logger.error(str(exception))
             raise Exception("Couldn't copy {} to {}".format(koji_latest_repo_file, "/etc/yum.repos.d"))
 
-        logger.debug("file {} copied to {}".format(koji_latest_repo_file, "/etc/yum.repos.d"))
+        this.logger.debug("file {} copied to {}".format(koji_latest_repo_file, "/etc/yum.repos.d"))
         return True
 
     def _install_rpms(self, task_id):
         """
         Install rpms from task_id, skip rpms with conflicts
         """
-        logger.info("Going to install rpms from {}".format(task_id))
+        this.logger.info("Going to install rpms from {}".format(task_id))
         # Get a list of conflicts from packages already installed in the image
         cmd = "dnf repoquery -q --conflict `rpm -qa --qf '%{NAME} '`"
-        logger.debug("Getting conflict of already installed packages")
+        this.logger.debug("Getting conflict of already installed packages")
         queried_conflicts = False
         for i in range(5):
             try:
                 installed_conflict_caps = self.g.sh(cmd)
             except RuntimeError as exception:
-                logger.error(str(exception))
-                logger.warning("Failed to get conflict of installed packages: {}/5".format(i))
+                this.logger.error(str(exception))
+                this.logger.warning("Failed to get conflict of installed packages: {}/5".format(i))
                 continue
             queried_conflicts = True
             break
@@ -342,7 +337,7 @@ class Qcow2():
                 try:
                     pkg_conflict = self.g.sh(cmd)
                 except RuntimeError as exception:
-                    logger.error(str(exception))
+                    this.logger.error(str(exception))
                     raise Exception("Failed to get what packages from repo conflicts with installed packages")
                 if pkg_conflict:
                     installed_conflicts.extend(pkg_conflict.split("\n"))
@@ -350,12 +345,12 @@ class Qcow2():
         # Get all packages provided by task repo
         cmd = 'dnf repoquery -q --disablerepo=* --enablerepo={0} --repofrompath={0},{1}/{0} --all --qf="%{{ARCH}}:%{{NAME}}"'.format(
             task_id, self.dest_base_repo_path)
-        logger.debug("Querying rpms provided by {}".format(task_id))
+        this.logger.debug("Querying rpms provided by {}".format(task_id))
         try:
             raw_pkgs = self.g.sh(cmd).split("\n")
         except RuntimeError as exception:
-            logger.debug(raw_pkgs)
-            logger.error(str(exception))
+            this.logger.debug(raw_pkgs)
+            this.logger.error(str(exception))
             raise Exception("Failed to get list of packages from task repo")
         pkgs = []
         for raw_pkg in raw_pkgs:
@@ -379,12 +374,12 @@ class Qcow2():
             found_conflict = False
             cmd = "dnf repoquery -q --disablerepo=* --enablerepo={0} --repofrompath={0},{1}/{0} --conflict {2}".format(
                 task_id, self.dest_base_repo_path, pkg)
-            logger.debug("Querying what conflicts with {} from {}".format(pkg, task_id))
+            this.logger.debug("Querying what conflicts with {} from {}".format(pkg, task_id))
             conflict_caps = self.g.sh(cmd).split("\n")
             for conflict_cap in conflict_caps:
                 if conflict_cap == "":
                     continue
-                logger.debug("Checking if any package from {} provides conflict {}".format(task_id, conflict_cap))
+                this.logger.debug("Checking if any package from {} provides conflict {}".format(task_id, conflict_cap))
                 cmd = 'dnf repoquery -q --qf "%{{NAME}}" --disablerepo=* --enablerepo={0} --repofrompath={0},{1}/{0} --whatprovides "{2}"'.format(
                     task_id, self.dest_base_repo_path, conflict_cap)
                 conflicts = self.g.sh(cmd).split("\n")
@@ -394,10 +389,10 @@ class Qcow2():
                         found_conflict = True
                         continue
             if found_conflict:
-                logger.info("will not install {} as it conflicts with {}.".format(pkg, " ".join(conflict_caps)))
+                this.logger.info("will not install {} as it conflicts with {}.".format(pkg, " ".join(conflict_caps)))
                 continue
             if pkg in installed_conflicts:
-                logger.info("will not install {} as it conflicts with installed package {}.".format(pkg, " ".join(installed_conflicts)))
+                this.logger.info("will not install {} as it conflicts with installed package {}.".format(pkg, " ".join(installed_conflicts)))
                 continue
             rpm_list.append(pkg)
 
@@ -409,11 +404,11 @@ class Qcow2():
         try:
             output = self.g.sh(cmd)
         except RuntimeError as exception:
-            logger.error(str(exception))
+            this.logger.error(str(exception))
             raise Exception("Couldn't install {}".format(rpm_list_str)) from None
-        logger.debug("Installing rpms using {}".format(cmd))
-        logger.debug(cmd)
-        logger.debug(output)
+        this.logger.debug("Installing rpms using {}".format(cmd))
+        this.logger.debug(cmd)
+        this.logger.debug(output)
         return True
 
 
@@ -426,7 +421,7 @@ class Qcow2():
         self.g.add_drive_opts(image, format="qcow2", readonly=0)
         self.g.set_memsize(4096)
         self.g.set_network(True)
-        logger.info("Going to prepare {}".format(image))
+        this.logger.info("Going to prepare {}".format(image))
         self.g.launch()
         if not self.mount_fs():
             return False
@@ -435,13 +430,13 @@ class Qcow2():
             try:
                 self.g.sh("sed -i s/gpgcheck=.*/gpgcheck=0/ /etc/yum.repos.d/*.repo")
             except RuntimeError as exception:
-                logger.error(str(exception))
+                this.logger.error(str(exception))
                 raise Exception("Couldn't disable gpgcheck") from None
         else:
             try:
                 self.g.sh("dnf config-manager --set-enable updates-testing updates-testing-debuginfo")
             except RuntimeError as exception:
-                logger.error(str(exception))
+                this.logger.error(str(exception))
                 raise Exception("Couldn't enable updates testing repos") from None
 
         if not self._add_latest_repo(release):
@@ -457,14 +452,13 @@ class Qcow2():
                     raise Exception("Could not install rpms from task {}".format(task_id))
 
         if sys_update:
-            logger.info("Going to update the system")
+            this.logger.info("Going to update the system")
             try:
                 output = self.g.sh("dnf upgrade -y")
             except RuntimeError as exception:
-                logger.error(str(exception))
+                this.logger.error(str(exception))
                 raise Exception("Couldn't upgrade system") from None
-
-        logger.info(output)
+            this.logger.info(output)
 
         se_config = self.g.sh("cat /etc/selinux/config")
         se_type = None
@@ -475,14 +469,14 @@ class Qcow2():
         if not se_type:
             raise Exception("Could not parse SElinux policy type")
 
-        logger.debug("Going to relabel SELinux contexts")
+        this.logger.debug("Going to relabel SELinux contexts")
         try:
             self.g.selinux_relabel("/etc/selinux/" + se_type + "/contexts/files/file_contexts", "/")
         except RuntimeError as exception:
-            logger.error(str(exception))
+            this.logger.error(str(exception))
             raise Exception("Couldn't relabel selinux contexts") from None
 
-        logger.info("{} is Ready".format(image))
+        this.logger.info("{} is Ready".format(image))
         return True
 
 
@@ -496,6 +490,8 @@ def main():
                         help="Ex: rawhide or f33")
     parser.add_argument("--task-id", "-t", dest="task_ids", action="append",
                         type=int, help="TaskID of rpms to be installed on qcow2")
+    parser.add_argument("--logs", "-l", dest="logs", default="./",
+                        help="Path where logs will be stored")
     parser.add_argument("--install-rpms", dest="install_rpms", action="store_true")
     parser.add_argument("--no-sys-update", dest="sys_update", action="store_false")
     parser.add_argument("--verbose", "-v", dest="verbose", action="store_true")
@@ -503,7 +499,14 @@ def main():
 
     args.release = args.release.lower()
 
-    configure_logging(verbose=args.verbose, output_file=output_log)
+    if not os.path.isdir(args.logs):
+        os.makedirs(args.logs)
+
+    logs = os.path.abspath(args.logs)
+    this.result_file = "{}/virt-customize-result.json".format(logs)
+    this.output_log = "{}/virt-customize.log".format(logs)
+
+    configure_logging(verbose=args.verbose, output_file=this.output_log)
 
     task_repos = []
     mykoji = Koji()
@@ -527,9 +530,9 @@ def main():
         raise Exception("Couldn't prepare qcow2 image")
 
     image_path = "{}/{}".format(os.getcwd(), image)
-    result = {"status": 0, "image": image_path, "log": output_log}
-    with open(result_file, "w") as _file:
-        json.dump(result, _file, indent=4, sort_keys=True, separators=(',', ': '))
+    this.result = {"status": 0, "image": image_path, "log": this.output_log}
+    with open(this.result_file, "w") as _file:
+        json.dump(this.result, _file, indent=4, sort_keys=True, separators=(',', ': '))
 
 
 if __name__ == "__main__":
@@ -537,9 +540,9 @@ if __name__ == "__main__":
         main()
     except Exception as exception:
         traceback.print_exc()
-        logger.error(str(exception))
-        result = {"status": 1, "image": None, "error_reason": str(exception), "log": output_log}
-        with open(result_file, "w") as _file:
-            json.dump(result, _file, indent=4, sort_keys=True, separators=(',', ': '))
+        this.logger.error(str(exception))
+        this.result = {"status": 1, "image": None, "error_reason": str(exception), "log": this.output_log}
+        with open(this.result_file, "w") as _file:
+            json.dump(this.result, _file, indent=4, sort_keys=True, separators=(',', ': '))
         sys.exit(1)
     sys.exit(0)
