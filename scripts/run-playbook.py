@@ -22,7 +22,8 @@ from ansible.inventory.manager import InventoryManager
 from ansible.vars.manager import VariableManager
 from ansible.utils.display import Display
 
-#pylint: disable=logging-format-interpolation
+# pylint: disable=logging-format-interpolation
+
 
 def _destroy_vm():
     kill_cmd = "killall /usr/bin/qemu-system-x86_64"
@@ -30,6 +31,7 @@ def _destroy_vm():
         subprocess.run(kill_cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
     except subprocess.CalledProcessError:
         pass
+
 
 def _run_pbex(pbex, return_dict):
     return_dict["exit_code"] = pbex.run()
@@ -75,7 +77,6 @@ class Runner():
         ch.setFormatter(formatter)
         self.logger.addHandler(ch)
 
-
         if output_file:
             if os.path.isfile(output_file):
                 os.remove(output_file)
@@ -83,7 +84,6 @@ class Runner():
             output_fh.setLevel(logger_lvl)
         output_fh.setFormatter(formatter)
         self.logger.addHandler(output_fh)
-
 
     def provision(self, image):
         """
@@ -99,7 +99,7 @@ class Runner():
         if os.path.isfile("inventory"):
             ansible_inventory = "inventory"
 
-        #guest and qemu logs are created by STR based on self.test_artifacts
+        # guest and qemu logs are created by STR based on self.test_artifacts
         base_image = os.path.basename(image)
         self.result["guest_log"] = "{}/{}.guest.log".format(self.test_artifacts, base_image)
         self.result["qemu_log"] = "{}/{}.qemu.log".format(self.test_artifacts, base_image)
@@ -177,7 +177,7 @@ class Runner():
         self.logger.debug("TEST_ARTIFACTS = {}".format(os.environ['TEST_ARTIFACTS']))
         # TODO: save execution output to file
         pbex = playbook_executor.PlaybookExecutor(playbooks=[playbook], inventory=inventory, variable_manager=variable_manager, loader=loader, passwords=passwords)
-        pbex._tqm._stdout_callback = "yaml" #pylint: disable=protected-access
+        pbex._tqm._stdout_callback = "yaml"  # pylint: disable=protected-access
 
         self.logger.info("Running playbook {}".format(playbook))
         # https://stackoverflow.com/questions/10415028/how-can-i-recover-the-return-value-of-a-function-passed-to-multiprocessing-proce

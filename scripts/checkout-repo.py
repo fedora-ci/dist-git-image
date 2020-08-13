@@ -15,7 +15,8 @@ import shutil
 
 from git import Repo
 
-#pylint: disable=logging-format-interpolation
+# pylint: disable=logging-format-interpolation
+
 
 class Runner():
     """
@@ -56,7 +57,6 @@ class Runner():
         ch.setFormatter(formatter)
         self.logger.addHandler(ch)
 
-
         if self.output_log:
             if os.path.isfile(self.output_log):
                 os.remove(self.output_log)
@@ -64,7 +64,6 @@ class Runner():
             output_fh.setLevel(logger_lvl)
             output_fh.setFormatter(formatter)
             self.logger.addHandler(output_fh)
-
 
     def clone_repo(self):
         """
@@ -93,7 +92,6 @@ class Runner():
                 self.logger.info("Retrying to clone {}. Attempt {}/{}".format(repo_url, attempt, max_retry))
                 continue
             break
-
 
         self.logger.info("Checkout {}".format(self.branch))
         git_repo.git.checkout(self.branch)
@@ -138,9 +136,7 @@ class Runner():
                 self.logger.error(exception.stdout)
             raise Exception("Couldn't merge {}".format(self.pr)) from None
 
-
         os.chdir(current_dir)
-
 
     def get_test_playbooks(self):
         """

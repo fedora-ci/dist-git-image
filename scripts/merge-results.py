@@ -20,7 +20,8 @@ this.logger = None
 this.result_file = None
 this.output_log = None
 
-#pylint: disable=logging-format-interpolation
+# pylint: disable=logging-format-interpolation
+
 
 def configure_logging(verbose=False, output_file=None):
     """Configure logging
@@ -44,7 +45,6 @@ def configure_logging(verbose=False, output_file=None):
     formatter = logging.Formatter("%(levelname)s: %(message)s")
     ch.setFormatter(formatter)
     this.logger.addHandler(ch)
-
 
     if output_file:
         if os.path.isfile(output_file):
@@ -166,8 +166,6 @@ def main():
     results = merge_results(args.results_path, args.merged_file)
     if args.xunit_file and results:
         results2xunit(results["results"], args.xunit_file)
-
-
 
     this.result = {"status": 0, "output_file": this.task_id, "log": this.output_log}
     with open(this.result_file, "w") as _file:

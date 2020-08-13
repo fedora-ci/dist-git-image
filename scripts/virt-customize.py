@@ -22,9 +22,11 @@ this.logger = None
 this.result_file = None
 this.output_log = None
 
-#pylint: disable=logging-format-interpolation
+# pylint: disable=logging-format-interpolation
 
-requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning) #pylint: disable=no-member
+
+requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)  # pylint: disable=no-member
+
 
 def _query_url(url, retry=10):
     while retry > 0:
@@ -40,6 +42,7 @@ def _query_url(url, retry=10):
     print("Could not connect to %s" % url)
     return None
 
+
 def _rawhide_dist_number():
     url = "https://src.fedoraproject.org/rpms/fedora-release/raw/master/f/fedora-release.spec"
     response = _query_url(url)
@@ -48,6 +51,7 @@ def _rawhide_dist_number():
         if match:
             return match.group(1)
     return None
+
 
 def configure_logging(verbose=False, output_file=None):
     """Configure logging
@@ -72,7 +76,6 @@ def configure_logging(verbose=False, output_file=None):
     ch.setFormatter(formatter)
     this.logger.addHandler(ch)
 
-
     if output_file:
         if os.path.isfile(output_file):
             os.remove(output_file)
@@ -80,6 +83,7 @@ def configure_logging(verbose=False, output_file=None):
         output_fh.setLevel(logger_lvl)
         output_fh.setFormatter(formatter)
         this.logger.addHandler(output_fh)
+
 
 def download_qcow2(release):
     """
@@ -96,7 +100,7 @@ def download_qcow2(release):
         raise Exception("Unsupported release {}".format(release))
 
     qcow2_file = "{}/{}".format(this.artifacts, url.split("/")[-1])
-    if  os.path.isfile(qcow2_file):
+    if os.path.isfile(qcow2_file):
         this.logger.info("{} already exists, no need to download.".format(qcow2_file))
         return qcow2_file
 
@@ -150,6 +154,7 @@ def verify_qcow2(image):
         this.logger.debug(result_run.stdout)
     return True
 
+
 def create_repo(repo):
     """
     Creates an rpm repository on provided path
@@ -179,7 +184,6 @@ class Koji():
     def __init__(self):
         self.hub = koji.ClientSession("https://koji.fedoraproject.org/kojihub")
         self.koji_params = os.getenv("KOJI_PARAMS", "")
-
 
     def download_task(self, task_id, task_repo):
         """
@@ -215,7 +219,6 @@ class Koji():
         if result_run.stdout:
             this.logger.debug(result_run.stdout)
         return True
-
 
 
 class Qcow2():
@@ -415,7 +418,6 @@ class Qcow2():
         this.logger.debug(output)
         return True
 
-
     def prepare_qcow2(self, image, release, task_repos, task_ids, install_rpms, sys_update):
         """
         Add latest rpms repo to qcow2
@@ -482,7 +484,6 @@ class Qcow2():
 
         this.logger.info("{} is Ready".format(image))
         return True
-
 
 
 def main():

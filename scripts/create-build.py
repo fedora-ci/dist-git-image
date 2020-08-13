@@ -31,9 +31,11 @@ this.logger = None
 this.result_file = None
 this.output_log = None
 
-#pylint: disable=logging-format-interpolation
+# pylint: disable=logging-format-interpolation
 
-requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning) #pylint: disable=no-member
+
+requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)  # pylint: disable=no-member
+
 
 def _query_url(url, retry=10):
     while retry > 0:
@@ -73,7 +75,6 @@ def configure_logging(verbose=False, output_file=None):
     ch.setFormatter(formatter)
     this.logger.addHandler(ch)
 
-
     if output_file:
         if os.path.isfile(output_file):
             os.remove(output_file)
@@ -101,7 +102,6 @@ class Koji():
             except Exception as exception:
                 this.logger.err(str(exception))
                 raise Exception("Couldn't authenticate using keytab")
-
 
     def create_build(self, repo, dist_ver, release):
         """
@@ -166,8 +166,6 @@ class Koji():
 
         os.chdir(current_dir)
         return _task_id
-
-
 
     def wait_task_complete(self, task_id):
         """
