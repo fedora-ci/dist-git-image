@@ -162,7 +162,8 @@ def create_repo(repo):
     this.logger.debug("Creating repo for {}".format(repo))
     cmd = "createrepo ."
     try:
-        result_run = subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=repo, check=True)
+        result_run = subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                    cwd=repo, check=True)
     except subprocess.CalledProcessError as exception:
         this.logger.error(str(exception))
         if exception.stderr:
@@ -194,10 +195,11 @@ class Koji():
         is_scratch = (taskinfo['request'][2] and
                       'scratch' in taskinfo['request'][2] and
                       taskinfo['request'][2]['scratch'])
+        default_params = "--arch=x86_64 --arch=src --arch=noarch"
         if is_scratch:
-            cmd = "koji {0} download-task --arch=x86_64 --arch=src --arch=noarch {1}".format(self.koji_params, task_id)
+            cmd = "koji {} download-task {} {}".format(self.koji_params, default_params, task_id)
         else:
-            cmd = "koji {0} download-build --arch=x86_64 --arch=src --arch=noarch --debuginfo --task-id {1}".format(self.koji_params, task_id)
+            cmd = "koji {} download-build {} --debuginfo --task-id {}".format(self.koji_params, default_params, task_id)
         if os.path.isdir(task_repo):
             this.logger.info("{} already exists, assume rpms are already downloaded. Skipping...".format(task_repo))
             return True
@@ -206,7 +208,8 @@ class Koji():
         this.logger.info("Downloading rpms from {}".format(task_id))
         this.logger.debug("Running {}".format(cmd))
         try:
-            result_run = subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=task_repo, check=True)
+            result_run = subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                        cwd=task_repo, check=True)
         except subprocess.CalledProcessError as exception:
             this.logger.error(str(exception))
             if exception.stderr:
@@ -336,11 +339,11 @@ class Qcow2():
 
         installed_conflict_caps = installed_conflict_caps.split("\n")
         installed_conflicts = []
+        repo_query_param = "--disablerepo=* --enablerepo={0} --repofrompath={0},{1}/{0}".format(task_id, self.dest_base_repo_path)
         if installed_conflict_caps:
             # from the possible conflicts get a list of packages would cause conflict
             for conflict_cap in installed_conflict_caps:
-                cmd = 'dnf repoquery -q --qf "%{{NAME}}" --disablerepo=* --enablerepo={0} --repofrompath={0},{1}/{0} --whatprovides "{2}"'.format(
-                    task_id, self.dest_base_repo_path, conflict_cap)
+                cmd = 'dnf repoquery -q --qf "%{{NAME}}" {} --whatprovides "{}"'.format(repo_query_param, conflict_cap)
                 try:
                     pkg_conflict = self.g.sh(cmd)
                 except RuntimeError as exception:
@@ -350,8 +353,7 @@ class Qcow2():
                     installed_conflicts.extend(pkg_conflict.split("\n"))
 
         # Get all packages provided by task repo
-        cmd = 'dnf repoquery -q --disablerepo=* --enablerepo={0} --repofrompath={0},{1}/{0} --all --qf="%{{ARCH}}:%{{NAME}}"'.format(
-            task_id, self.dest_base_repo_path)
+        cmd = 'dnf repoquery -q {} --all --qf="%{{ARCH}}:%{{NAME}}"'.format(repo_query_param)
         this.logger.debug("Querying rpms provided by {}".format(task_id))
         try:
             raw_pkgs = self.g.sh(cmd).split("\n")
@@ -379,16 +381,14 @@ class Qcow2():
         rpm_list = []
         for pkg in pkgs:
             found_conflict = False
-            cmd = "dnf repoquery -q --disablerepo=* --enablerepo={0} --repofrompath={0},{1}/{0} --conflict {2}".format(
-                task_id, self.dest_base_repo_path, pkg)
+            cmd = "dnf repoquery -q {} --conflict {}".format(repo_query_param, pkg)
             this.logger.debug("Querying what conflicts with {} from {}".format(pkg, task_id))
             conflict_caps = self.g.sh(cmd).split("\n")
             for conflict_cap in conflict_caps:
                 if conflict_cap == "":
                     continue
                 this.logger.debug("Checking if any package from {} provides conflict {}".format(task_id, conflict_cap))
-                cmd = 'dnf repoquery -q --qf "%{{NAME}}" --disablerepo=* --enablerepo={0} --repofrompath={0},{1}/{0} --whatprovides "{2}"'.format(
-                    task_id, self.dest_base_repo_path, conflict_cap)
+                cmd = 'dnf repoquery -q --qf "%{{NAME}}" {} --whatprovides "{}"'.format(repo_query_param, conflict_cap)
                 conflicts = self.g.sh(cmd).split("\n")
                 for conflict in conflicts:
                     if conflict in rpm_list:

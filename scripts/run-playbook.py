@@ -112,7 +112,8 @@ class Runner():
             # make sure there is no VM running
             _destroy_vm()
             try:
-                inventory = subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, env=env)
+                inventory = subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                           check=True, env=env)
             except subprocess.CalledProcessError as exception:
                 attempt += 1
                 if attempt > max_retry:
@@ -176,7 +177,8 @@ class Runner():
         os.environ['TEST_ARTIFACTS'] = os.path.abspath(self.test_artifacts)
         self.logger.debug("TEST_ARTIFACTS = {}".format(os.environ['TEST_ARTIFACTS']))
         # TODO: save execution output to file
-        pbex = playbook_executor.PlaybookExecutor(playbooks=[playbook], inventory=inventory, variable_manager=variable_manager, loader=loader, passwords=passwords)
+        pbex = playbook_executor.PlaybookExecutor(playbooks=[playbook], inventory=inventory, variable_manager=variable_manager,
+                                                  loader=loader, passwords=passwords)
         pbex._tqm._stdout_callback = "yaml"  # pylint: disable=protected-access
 
         self.logger.info("Running playbook {}".format(playbook))
