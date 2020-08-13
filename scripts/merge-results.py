@@ -104,7 +104,7 @@ def merge_results(base_path, output):
     return results
 
 
-def results2xunit(results, xunitfile):
+def results2xunit(results, logs_base_path, xunitfile):
     """
     Save the merged results to xunit format
     """
@@ -122,7 +122,7 @@ def results2xunit(results, xunitfile):
             continue
         logs = ET.SubElement(tc, "logs")
         for log_name in testcase["logs"]:
-            log_path = "UPDATE_ME/{}".format(log_name)
+            log_path = "{}/{}".format(logs_base_path, log_name)
             ET.SubElement(logs, "log", name=log_name, href=log_path)
 
     xunit_dir = os.path.dirname(xunitfile)
@@ -148,6 +148,8 @@ def main():
                         help="New file with merged results")
     parser.add_argument("--xunit-file", "-x", dest="xunit_file",
                         help="New file with merged results")
+    parser.add_argument("--base-logs-url", "-p", dest="base_logs_url", default = "./"
+                        help="Base url to be used as refenrece on xunit logs link")
     parser.add_argument("--logs", "-l", dest="logs", default="./",
                         help="Path where logs will be stored")
     parser.add_argument("--verbose", "-v", dest="verbose", action="store_true")
@@ -165,7 +167,7 @@ def main():
 
     results = merge_results(args.results_path, args.merged_file)
     if args.xunit_file and results:
-        results2xunit(results["results"], args.xunit_file)
+        results2xunit(results["results"], args.base_logs_url, args.xunit_file)
 
     this.result = {"status": 0, "output_file": this.task_id, "log": this.output_log}
     with open(this.result_file, "w") as _file:
