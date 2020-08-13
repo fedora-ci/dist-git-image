@@ -507,7 +507,7 @@ def main():
         os.makedirs(args.artifacts)
 
     this.artifacts = os.path.abspath(args.artifacts)
-    this.result_file = "{}/virt-customize-result.json".format(this.artifacts)
+    this.result_file = "{}/virt-customize.json".format(this.artifacts)
     this.output_log = "{}/virt-customize.log".format(this.artifacts)
 
     configure_logging(verbose=args.verbose, output_file=this.output_log)

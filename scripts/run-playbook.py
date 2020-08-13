@@ -252,7 +252,7 @@ class Runner():
             os.makedirs(args.artifacts)
 
         self.test_artifacts = os.path.abspath(args.artifacts)
-        self.result_file = "{}/run-playbook-result.json".format(self.test_artifacts)
+        self.result_file = "{}/run-playbook.json".format(self.test_artifacts)
         self.output_log = "{}/run-playbook.log".format(self.test_artifacts)
         self.inventory_file = "{}/pipeline_inventory.yaml".format(self.test_artifacts)
 

@@ -40,6 +40,7 @@ COPY ["scripts/virt-customize.py", \
       "scripts/create-build.py", \
       "scripts/run-playbook.py", \
       "scripts/resize-qcow2.sh", \
+      "scripts/merge-results.py", \
       "playbooks/rpm-verify.yml", \
       "playbooks/sync-artifacts.yml", \
       "/tmp/"]

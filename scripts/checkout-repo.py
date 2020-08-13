@@ -189,7 +189,7 @@ class Runner():
             os.makedirs(args.logs)
 
         self.logs = os.path.abspath(args.logs)
-        self.result_file = "{}/checkout-repo-result.json".format(self.logs)
+        self.result_file = "{}/checkout-repo.json".format(self.logs)
         self.output_log = "{}/checkout-repo.log".format(self.logs)
 
         self.configure_logging(verbose=args.verbose)

@@ -211,8 +211,8 @@ def main():
 
     logs = os.path.abspath(args.logs)
 
-    this.result_file = "{}/create-build-result.json".format(logs)
-    this. output_log = "{}/create-build.log".format(logs)
+    this.result_file = "{}/create-build.json".format(logs)
+    this.output_log = "{}/create-build.log".format(logs)
 
     release = args.release.lower()
 

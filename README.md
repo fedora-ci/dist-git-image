@@ -27,9 +27,15 @@ This script creates an scratch build in koji from a pull request
 * Submit an scratch build from src.rpm
 * Wait scratch build to complete
 
+### merge-results.py
+
+Merge all results.yml from test playbooks to a single file
+
+* Optionally saves the merged result as xunit file
+
 ### resize-qcow2.sh
 
-* Script used to expand the filesystem on qcow2 image
+Script used to expand the filesystem on qcow2 image
 
 ### run-playbook.py
 
