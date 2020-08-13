@@ -148,7 +148,7 @@ def main():
                         help="New file with merged results")
     parser.add_argument("--xunit-file", "-x", dest="xunit_file",
                         help="New file with merged results")
-    parser.add_argument("--base-logs-url", "-p", dest="base_logs_url", default = "./"
+    parser.add_argument("--base-logs-url", "-p", dest="base_logs_url",
                         help="Base url to be used as refenrece on xunit logs link")
     parser.add_argument("--logs", "-l", dest="logs", default="./",
                         help="Path where logs will be stored")
@@ -167,6 +167,8 @@ def main():
 
     results = merge_results(args.results_path, args.merged_file)
     if args.xunit_file and results:
+        if not args.base_logs_url:
+            args.base_logs_url = args.results_path
         results2xunit(results["results"], args.base_logs_url, args.xunit_file)
 
     this.result = {"status": 0, "output_file": this.task_id, "log": this.output_log}
