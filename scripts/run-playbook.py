@@ -104,7 +104,7 @@ class Runner():
         self.result["guest_log"] = "{}/{}.guest.log".format(self.test_artifacts, base_image)
         self.result["qemu_log"] = "{}/{}.qemu.log".format(self.test_artifacts, base_image)
 
-        cmd = "ansible-inventory --inventory={} --list --yaml".format(ansible_inventory)
+        cmd = "timeout 10m ansible-inventory --inventory={} --list --yaml".format(ansible_inventory)
         self.logger.debug("Running TEST_DEBUG={} TEST_SUBJECTS={} {}".format(env['TEST_DEBUG'], env['TEST_SUBJECTS'], cmd))
         max_retry = 5
         attempt = 1
