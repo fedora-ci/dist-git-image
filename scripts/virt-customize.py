@@ -296,13 +296,13 @@ class Qcow2():
             dist_num = _rawhide_dist_number()
             if not dist_num:
                 raise Exception("Couldn't discover the Fedora dist number of rawhide")
-            release = "f{}".format(dist_num)
+            fedora_dist = "f{}".format(dist_num)
 
-        koji_latest_repo = "[koji-{0}]-build\n".format(fedora_dist)
-        koji_latest_repo = "name=koji-{0}-build\n".format(fedora_dist)
-        koji_latest_repo = "baseurl=https://kojipkgs.fedoraproject.org/repos/{0}-build/latest/x86_64/\n".format(fedora_dist)
-        koji_latest_repo = "enabled=1\n"
-        koji_latest_repo = "gpgcheck=0\n"
+        koji_latest_repo = "[koji-{0}-build]\n".format(fedora_dist)
+        koji_latest_repo += "name=koji-{0}-build\n".format(fedora_dist)
+        koji_latest_repo += "baseurl=https://kojipkgs.fedoraproject.org/repos/{0}-build/latest/x86_64/\n".format(fedora_dist)
+        koji_latest_repo += "enabled=1\n"
+        koji_latest_repo += "gpgcheck=0\n"
 
         koji_latest_repo_file = "{}/koji-latest.repo".format(this.artifacts)
         with open(koji_latest_repo_file, "w") as _file:
