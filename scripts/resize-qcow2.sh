@@ -63,21 +63,24 @@ fi
 
 set -ex
 
+baseImageName=$(basename ${imageName})
+dirImage=$(dirname ${imageName})
+
 qemu-img resize ${imageName} +${increase}
 
-cp ${imageName} orig_${imageName}
+cp ${dirImage}/${baseImageName} ${dirImage}/orig_${baseImageName}
 
-LIBGUESTFS_BACKEND=direct virt-resize --expand ${partition} orig_${imageName} ${imageName}
+LIBGUESTFS_BACKEND=direct virt-resize --expand ${partition} ${dirImage}/orig_${baseImageName} ${imageName}
 
 qemu-img check ${imageName}
 
-rm -f orig_${imageName}
+rm -f ${dirImage}/orig_${baseImageName}
 
 # Compresss qcow2
-qemu-img convert -c -O qcow2 ${imageName} compressed_${imageName}
+qemu-img convert -c -O qcow2 ${imageName} ${dirImage}/compressed_${baseImageName}
 
-qemu-img check compressed_${imageName}
+qemu-img check ${dirImage}/compressed_${baseImageName}
 
-mv -f compressed_${imageName} ${imageName}
+mv -f ${dirImage}/compressed_${baseImageName} ${imageName}
 
 qemu-img info ${imageName}
