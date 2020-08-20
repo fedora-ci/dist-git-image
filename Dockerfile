@@ -15,6 +15,8 @@ RUN for i in {1..5} ; do dnf -y install \
         git \
         koji \
         krb5-workstation \
+        # libguestfs-tools-c is required by resize-qcow2.sh
+        libguestfs-tools-c \
         python3-libguestfs \
         python3-libselinux \
         python3-pip \
