@@ -493,8 +493,10 @@ def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument("--release", "-r", dest="release", required=True,
                         help="Ex: rawhide or f33")
-    parser.add_argument("--task-id", "-t", dest="task_ids", action="append",
+    parser.add_argument("--task-id", "-t", dest="task_ids", action="append", default=[],
                         type=int, help="TaskID of rpms to be installed on qcow2")
+    parser.add_argument("--additional-task-id", dest="additional_task_ids", action="append",
+                        type=int, default=[], help="extra taskIDs will be avaiblabe as repo, but won't be installed by --install-rpms")
     parser.add_argument("--artifacts", "-a", dest="artifacts", default="./",
                         help="Path where logs, qcow2 and other files will be stored")
     parser.add_argument("--install-rpms", dest="install_rpms", action="store_true")
@@ -515,8 +517,9 @@ def main():
 
     task_repos = []
     mykoji = Koji()
-    if args.task_ids:
-        for task_id in args.task_ids:
+    repo_task_ids = args.task_ids + args.additional_task_ids
+    if repo_task_ids:
+        for task_id in repo_task_ids:
             base_path = "{}/task_repos".format(this.artifacts)
             task_repo = "{}/{}".format(base_path, task_id)
             mykoji.download_task(task_id, task_repo)
