@@ -212,7 +212,6 @@ class Runner():
                 # playbook didn't create results.yml, so create one
                 test_result = {}
                 test_result['test'] = os.path.splitext(os.path.basename(playbook))[0]
-                test_result['logs'] = [self.test_artifacts]
                 if exit_code == 0:
                     test_result['result'] = "pass"
                 else:

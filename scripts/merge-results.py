@@ -118,9 +118,10 @@ def results2xunit(results, logs_base_path, xunitfile):
         tc = ET.SubElement(ts, "testcase", name=testcase_name)
         if testcase_result != "pass":
             ET.SubElement(tc, "failure")
-        if 'logs' not in testcase:
-            continue
         logs = ET.SubElement(tc, "logs")
+        if 'logs' not in testcase:
+            ET.SubElement(logs, "log", name=testcase_name, href=logs_base_path)
+            continue
         for log_name in testcase["logs"]:
             log_path = "{}/{}".format(logs_base_path, log_name)
             ET.SubElement(logs, "log", name=log_name, href=log_path)
