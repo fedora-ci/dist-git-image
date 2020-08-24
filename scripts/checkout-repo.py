@@ -6,6 +6,7 @@ import argparse
 import logging
 import os
 import sys
+import re
 import traceback
 import glob
 import subprocess
@@ -138,6 +139,20 @@ class Runner():
 
         os.chdir(current_dir)
 
+    def _has_classic_tag(self, playbook):
+        self.logger.debug("Checking if playbook {} has classic tag".format(playbook))
+        cmd = "ansible-playbook --tags classic --list-tags {}".format(playbook)
+        output = subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        for line in output.stdout.split("\n"):
+            if re.match(r"\s+TASK TAGS: \[.*\bclassic\b.*\]", line):
+                self.logger.debug("playbook {} has classic tag".format(playbook))
+                return True
+            if re.match(r"\s+TASK TAGS: \[.*\balways\b.*\]", line):
+                self.logger.debug("playbook {} has always tag".format(playbook))
+                return True
+        self.logger.debug("playbook {} has NOT classic tag".format(playbook))
+        return False
+
     def get_test_playbooks(self):
         """
         Check if repo has tests/tests*.yml files
@@ -155,10 +170,14 @@ class Runner():
             self.logger.debug("There is no tests directory")
             return []
 
-        playbooks = glob.glob("tests*.yml")
+        tmp_playbooks = glob.glob("tests*.yml")
+        playbooks = []
         os.chdir(current_dir)
-        self.logger.debug("Test playbooks are: {}".format(",".join(playbooks)))
+        for play in tmp_playbooks:
+            if self._has_classic_tag("{}/{}".format(tests_dir, play)):
+                playbooks.append(play)
 
+        self.logger.debug("Test playbooks are: {}".format(",".join(playbooks)))
         return playbooks
 
     def main(self):

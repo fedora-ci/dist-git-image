@@ -144,7 +144,7 @@ def main():
     """
     parser = argparse.ArgumentParser(description='')
     parser.add_argument("--results-path", "-r", dest="results_path", required=True,
-                        help="Base path for directory that all subdirectories contain resutls.yml")
+                        help="Base path for directory that all subdirectories contain results.yml")
     parser.add_argument("--output", "-o", dest="merged_file", required=True,
                         help="New file with merged results")
     parser.add_argument("--xunit-file", "-x", dest="xunit_file",
