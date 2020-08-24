@@ -142,7 +142,16 @@ class Runner():
     def _has_classic_tag(self, playbook):
         self.logger.debug("Checking if playbook {} has classic tag".format(playbook))
         cmd = "ansible-playbook --tags classic --list-tags {}".format(playbook)
-        output = subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        try:
+            output = subprocess.run(cmd.split(), universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        except subprocess.CalledProcessError as exception:
+            self.logger.error(str(exception))
+            if exception.stderr:
+                self.logger.error(exception.stderr)
+            if exception.stdout:
+                self.logger.error(exception.stdout)
+            raise Exception("Couldn't check is playbook has classic tag") from None
+
         for line in output.stdout.split("\n"):
             if re.match(r"\s+TASK TAGS: \[.*\bclassic\b.*\]", line):
                 self.logger.debug("playbook {} has classic tag".format(playbook))
