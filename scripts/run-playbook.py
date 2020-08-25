@@ -201,12 +201,22 @@ class Runner():
         self.logger.debug("Playbook {} finished with {}".format(playbook, exit_code))
 
         if check_result:
+            results_yml_file = "{}/results.yml".format(self.test_artifacts)
             # check if result matches: https://docs.fedoraproject.org/en-US/ci/standard-test-interface/
             if not os.path.isfile("{}/test.log".format(self.test_artifacts)):
-                self.logger.error("Playbook finished without creating test.log")
+                err_msg = "Playbook finished without creating test.log"
+                # overwrite any results.yml to make sure there is an error
+                test_result = {}
+                test_result['test'] = os.path.splitext(os.path.basename(playbook))[0]
+                test_result['result'] = "fail"
+                test_result["error_reason"] = err_msg
+                result = {}
+                result['results'] = [test_result]
+                with open(results_yml_file, "w") as _file:
+                    yaml.safe_dump(result, _file)
+                self.logger.error(err_msg)
                 exit_code = 1
 
-            results_yml_file = "{}/results.yml".format(self.test_artifacts)
             if not os.path.isfile(results_yml_file):
                 self.logger.debug("playbook didn't create results.yml, creating one...")
                 # playbook didn't create results.yml, so create one
