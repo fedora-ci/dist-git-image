@@ -31,6 +31,9 @@ RUN for i in {1..5} ; do dnf -y install \
         && dnf clean all \
         && break || sleep 10 ; done
 
+# Ansible API changes very often, make sure we run with a version we know it works
+RUN pip-3 install ansible==2.8.0
+
 COPY default.xml /etc/libvirt/qemu/networks/
 ENV LIBGUESTFS_BACKEND=direct
 
@@ -43,12 +46,10 @@ COPY ["scripts/virt-customize.py", \
       "scripts/run-playbook.py", \
       "scripts/resize-qcow2.sh", \
       "scripts/merge-results.py", \
+      "playbooks/get-installed-rpms.yml", \
       "playbooks/rpm-verify.yml", \
       "playbooks/sync-artifacts.yml", \
       "/tmp/"]
-
-# Ansible API changes very often, make sure we run with a version we know it works
-RUN pip-3 install ansible==2.8.0
 
 ENTRYPOINT ["bash"]
 #

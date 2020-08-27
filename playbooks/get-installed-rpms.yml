@@ -1,0 +1,15 @@
+---
+- hosts: localhost
+  vars:
+    artifacts: "{{ lookup('env', 'TEST_ARTIFACTS') }}"
+  tags: classic
+  tasks:
+    - name: Save list of installed rpms
+      shell: "rpm -qa | sort > installed_rpms.txt"
+      args:
+        warn: false
+    - name: Fetch installed rpms file to {{ artifacts }}
+      fetch:
+        src: installed_rpms.txt
+        dest: "{{ artifacts }}/installed_rpms.txt"
+        flat: yes

@@ -306,6 +306,12 @@ class Runner():
             # make sure even if playbooks doesn't fetch logs from VM the artficats is synced
             self.run_playbook("/tmp/sync-artifacts.yml")
 
+        # args.check_result is true when running tests playbooks
+        # assume we always want to save the installed rpms after test finished
+        if args.check_result:
+            self.display.verbosity = 0
+            self.run_playbook("/tmp/get-installed-rpms.yml")
+
         self.result["status"] = exit_code
         with open(self.result_file, "w") as _file:
             json.dump(self.result, _file, indent=4, sort_keys=True, separators=(',', ': '))
