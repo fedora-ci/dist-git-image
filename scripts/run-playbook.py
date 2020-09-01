@@ -12,6 +12,7 @@ import time
 import subprocess
 import json
 import yaml
+import psutil
 
 from ansible import context
 from ansible.cli import CLI
@@ -32,6 +33,13 @@ def _destroy_vm():
     except subprocess.CalledProcessError:
         pass
 
+
+def _terminate_tree(pid):
+    #https://www.reddit.com/r/learnpython/comments/7vwyez/how_to_kill_child_processes_when_using/
+    parent = psutil.Process(pid)
+    for child in parent.children(recursive=True):
+        child.terminate()
+    parent.terminate()
 
 def _run_pbex(pbex, return_dict):
     return_dict["exit_code"] = pbex.run()
@@ -190,7 +198,7 @@ class Runner():
         run_process.join(4*60*60)
         if run_process.is_alive():
             self.logger.error("Playbook has been running for too long. Aborting it.")
-            run_process.terminate()
+            _terminate_tree(run_process.pid)
             run_process.join()
             exit_code = 124
         else:
@@ -198,7 +206,6 @@ class Runner():
                 exit_code = return_dict["exit_code"]
             else:
                 exit_code = 1
-        run_process.close()
         self.logger.debug("Playbook {} finished with {}".format(playbook, exit_code))
 
         if check_result:

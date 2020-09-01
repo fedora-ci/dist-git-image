@@ -23,6 +23,7 @@ RUN for i in {1..5} ; do dnf -y install \
         # install python3-devel as workaround for https://pagure.io/standard-test-roles/issue/313
         python3-devel \
         python3-dnf \
+        python3-psutil \
         qemu-img \
         rpm-build \
         rsync \
