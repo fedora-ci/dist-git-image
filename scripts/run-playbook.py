@@ -192,12 +192,13 @@ class Runner():
             self.logger.error("Playbook has been running for too long. Aborting it.")
             run_process.terminate()
             run_process.join()
-            exit_code = 1
+            exit_code = 124
         else:
             if "exit_code" in return_dict:
                 exit_code = return_dict["exit_code"]
             else:
                 exit_code = 1
+        run_process.close()
         self.logger.debug("Playbook {} finished with {}".format(playbook, exit_code))
 
         if check_result:
@@ -284,7 +285,7 @@ class Runner():
             self.logger.debug("backing up {}".format(results_file))
             os.rename(results_file, results_bak_file)
 
-        exit_code = self.run_playbook(args.playbook, args.extra_vars, args.check_result)
+        return_code = self.run_playbook(args.playbook, args.extra_vars, args.check_result)
 
         # add new results to old results and save them as results.yml
         if (os.path.isfile(results_file) and os.path.isfile(results_bak_file)):
@@ -301,7 +302,7 @@ class Runner():
                 yaml.safe_dump(parsed_yaml, _file)
             os.remove(results_bak_file)
 
-        if exit_code != 0:
+        if return_code != 0:
             self.display.verbosity = 0
             # make sure even if playbooks doesn't fetch logs from VM the artficats is synced
             self.run_playbook("/tmp/sync-artifacts.yml")
@@ -312,17 +313,17 @@ class Runner():
             self.display.verbosity = 0
             self.run_playbook("/tmp/get-installed-rpms.yml")
 
-        self.result["status"] = exit_code
+        self.result["status"] = return_code
         with open(self.result_file, "w") as _file:
             json.dump(self.result, _file, indent=4, sort_keys=True, separators=(',', ': '))
-        self.logger.debug("Saved result to {}. Exiting with exit code: {}".format(self.result_file, exit_code))
-        sys.exit(exit_code)
+        self.logger.debug("Saved result to {}.".format(self.result_file))
+        return return_code
 
 
 if __name__ == "__main__":
     runner = Runner()
     try:
-        runner.main()
+        exit_code = runner.main()
     except Exception as exception:
         traceback.print_exc()
         runner.logger.error(str(exception))
@@ -332,4 +333,5 @@ if __name__ == "__main__":
             json.dump(runner.result, _file, indent=4, sort_keys=True, separators=(',', ': '))
         sys.exit(1)
 
-    sys.exit(0)
+    runner.logger.debug("Exiting with exit code: {}".format(exit_code))
+    sys.exit(exit_code)
