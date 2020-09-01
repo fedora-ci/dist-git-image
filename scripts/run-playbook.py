@@ -315,6 +315,7 @@ class Runner():
         self.result["status"] = exit_code
         with open(self.result_file, "w") as _file:
             json.dump(self.result, _file, indent=4, sort_keys=True, separators=(',', ': '))
+        self.logger.debug("Saved result to {}. Exiting with exit code: {}".format(self.result_file, exit_code))
         sys.exit(exit_code)
 
 
