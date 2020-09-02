@@ -200,13 +200,13 @@ class Runner():
             self.logger.error("Playbook has been running for too long. Aborting it.")
             _terminate_tree(run_process.pid)
             run_process.join()
-            exit_code = 124
+            return_code = 124
         else:
             if "exit_code" in return_dict:
-                exit_code = return_dict["exit_code"]
+                return_code = return_dict["exit_code"]
             else:
-                exit_code = 1
-        self.logger.debug("Playbook {} finished with {}".format(playbook, exit_code))
+                return_code = 1
+        self.logger.debug("Playbook {} finished with {}".format(playbook, return_code))
 
         if check_result:
             results_yml_file = "{}/results.yml".format(self.test_artifacts)
@@ -223,14 +223,14 @@ class Runner():
                 with open(results_yml_file, "w") as _file:
                     yaml.safe_dump(result, _file)
                 self.logger.error(err_msg)
-                exit_code = 1
+                return_code = 1
 
             if not os.path.isfile(results_yml_file):
                 self.logger.debug("playbook didn't create results.yml, creating one...")
                 # playbook didn't create results.yml, so create one
                 test_result = {}
                 test_result['test'] = os.path.splitext(os.path.basename(playbook))[0]
-                if exit_code == 0:
+                if return_code == 0:
                     test_result['result'] = "pass"
                 else:
                     test_result['result'] = "fail"
@@ -245,9 +245,9 @@ class Runner():
             for result in parsed_yaml["results"]:
                 if result['result'] != "pass":
                     self.logger.debug("{} has result {}, setting whole playbook as failed".format(result['test'], result['result']))
-                    exit_code = 1
+                    return_code = 1
 
-        return exit_code
+        return return_code
 
     def main(self):
         """
