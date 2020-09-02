@@ -320,7 +320,7 @@ class Qcow2():
         """
         Install rpms from task_id, skip rpms with conflicts
         """
-        this.logger.info("Going to install rpms from {}".format(task_id))
+        this.logger.info("Preparing to install rpms from {}".format(task_id))
         # Get a list of conflicts from packages already installed in the image
         cmd = "dnf repoquery -q --conflict `rpm -qa --qf '%{NAME} '`"
         this.logger.debug("Getting conflict of already installed packages")
@@ -407,6 +407,7 @@ class Qcow2():
             raise Exception("There is no suitable rpm to be installed")
 
         rpm_list_str = " ".join(rpm_list)
+        this.logger.info("Going to install {}".format(rpm_list_str))
         cmd = "dnf install -y --best --allowerasing --nogpgcheck {}".format(rpm_list_str)
         try:
             output = self.g.sh(cmd)
