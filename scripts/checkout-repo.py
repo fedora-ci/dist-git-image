@@ -238,7 +238,7 @@ if __name__ == "__main__":
     try:
         runner.main()
     except Exception as exception:
-        traceback.print_exc()
+        runner.logger.debug(traceback.format_exc())
         runner.logger.error(str(exception))
         runner.result = {"status": 1, "test_playbooks": None, "error_reason": str(exception), "log": runner.output_log}
         with open(runner.result_file, "w") as _file:

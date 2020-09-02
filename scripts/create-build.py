@@ -233,7 +233,7 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as exception:
-        traceback.print_exc()
+        this.logger.debug(traceback.format_exc())
         this.logger.error(str(exception))
         this.result = {"status": 1, "task_id": this.task_id, "error_reason": str(exception),
                        "log": this.output_log}

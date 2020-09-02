@@ -332,7 +332,7 @@ if __name__ == "__main__":
     try:
         exit_code = runner.main()
     except Exception as exception:
-        traceback.print_exc()
+        runner.logger.debug(traceback.format_exc())
         runner.logger.error(str(exception))
         runner.result["status"] = 1
         runner.result["error_reason"] = str(exception)
