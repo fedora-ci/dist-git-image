@@ -171,7 +171,7 @@ class Runner():
         current_dir = os.getcwd()
         tests_dir = "{}/tests".format(self.repo)
         if self.namespace == "tests":
-            tests_dir = "./"
+            tests_dir = self.repo
         try:
             os.chdir(tests_dir)
         except FileNotFoundError:
