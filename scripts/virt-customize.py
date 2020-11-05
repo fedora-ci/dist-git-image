@@ -419,7 +419,7 @@ class Qcow2():
         this.logger.debug(output)
         return True
 
-    def prepare_qcow2(self, image, release, task_repos, task_ids, install_rpms, sys_update):
+    def prepare_qcow2(self, image, release, task_repos, install_repos, install_rpms, sys_update):
         """
         Add latest rpms repo to qcow2
         Copy task repos to qcow2
@@ -453,10 +453,10 @@ class Qcow2():
             raise Exception("Could not copy all task repos to image")
 
         # if task_id is provided and it should install the rpms
-        if task_ids and install_rpms:
-            for task_id in task_ids:
-                if not self._install_rpms(task_id):
-                    raise Exception("Could not install rpms from task {}".format(task_id))
+        if install_repos and install_rpms:
+            for repo in install_repos:
+                if not self._install_rpms(repo):
+                    raise Exception("Could not install rpms from repo {}".format(repo))
 
         if sys_update:
             this.logger.info("Going to update the system")
@@ -519,10 +519,35 @@ def main():
     task_repos = []
     mykoji = Koji()
     repo_task_ids = args.task_ids + args.additional_task_ids
+
+    taskid2pkgname = {}
+
     if repo_task_ids:
         for task_id in repo_task_ids:
             base_path = "{}/task_repos".format(this.artifacts)
-            task_repo = "{}/{}".format(base_path, task_id)
+            taskinfo = mykoji.hub.getTaskInfo(task_id, request=True)
+            # from source info, find package name
+            # based on https://github.com/openshift/contra-lib/blob/master/src/org/centos/contra/pipeline/Utils.groovy#L13
+            build_source = taskinfo['request'][0]
+            if build_source.endswith(".src.rpm"):
+                build_source = build_source.split(":")[-1]
+            match_git = re.match(r'git.+?\/([a-z0-9A-Z_\-\+\.]+?)(?:\.git|\?|#).*', build_source)
+            match_pkg = re.match(r'^([a-zA-Z0-9\-_\+\.]+$)', build_source)
+            match_srpm = re.match(r'([a-zA-Z0-9\-_\+\.]+).f\d+.src.rpm', build_source)
+            match_build = re.match(r'(?:koji-shadow|cli-build).+?\/([a-zA-Z0-9\-_\+\.]+)-([a-zA-Z0-9\-_\+\.]+)-([a-zA-Z0-9\-_\+\.]+).*', build_source)
+            pkg_name = None
+            if match_git:
+                pkg_name = match_git.group(1)
+            elif match_srpm:
+                pkg_name = match_srpm.group(1)
+            elif match_pkg:
+                pkg_name = match_pkg.group(1)
+            elif match_build:
+                pkg_name = match_build.group(1)
+            else:
+                raise Exception("Couldn't find package name for task {}".format(task_id))
+            taskid2pkgname[task_id] = pkg_name
+            task_repo = "{}/{}".format(base_path, pkg_name)
             mykoji.download_task(task_id, task_repo)
             create_repo(task_repo)
             task_repos.append(task_repo)
@@ -535,7 +560,12 @@ def main():
         raise Exception("{} is corrupted".format(image))
 
     qcow2 = Qcow2()
-    if not qcow2.prepare_qcow2(image, args.release, task_repos, args.task_ids, args.install_rpms, args.sys_update):
+    installRepos = []
+    for task in taskid2pkgname:
+        if task not in args.task_ids:
+            continue
+        installRepos.append(taskid2pkgname[task])
+    if not qcow2.prepare_qcow2(image, args.release, task_repos, installRepos, args.install_rpms, args.sys_update):
         raise Exception("Couldn't prepare qcow2 image")
 
     image_path = image
