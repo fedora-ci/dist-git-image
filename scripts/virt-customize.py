@@ -91,7 +91,7 @@ def download_qcow2(release):
     """
     url = None
     match = re.match(r"f(\d+)", release)
-    base_url = "https://jenkins-continuous-infra.apps.ci.centos.org/job"
+    base_url = "https://osci-jenkins-2.ci.fedoraproject.org/job"
     if release == "rawhide":
         url = "{}/fedora-rawhide-image-test/lastSuccessfulBuild/artifact/Fedora-Rawhide.qcow2".format(base_url)
     elif match:
