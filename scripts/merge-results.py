@@ -89,6 +89,8 @@ def merge_results(base_path, output):
             _result["test"] = "{}/{}".format(_dir, _result["test"])
             if "logs" in _result:
                 _result["logs"][:] = ["{}/{}".format(_dir, s) for s in _result["logs"]]
+            else:
+                _result["logs"] = [_dir]
         results["results"].extend(tmp_result["results"])
 
     output_dir = os.path.dirname(output)
