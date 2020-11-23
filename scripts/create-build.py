@@ -214,6 +214,7 @@ def main():
 
     release = args.release.lower()
 
+    dist_ver = release
     if release == "rawhide":
         dist_ver = "master"
 
