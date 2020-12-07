@@ -1,4 +1,4 @@
-FROM quay.io/fedora/fedora:33-x86_64
+FROM registry.fedoraproject.org/fedora:latest
 LABEL maintainer "https://github.com/fedora-ci/dist-git-image.git"
 LABEL description="This container is meant to \
 contain all script needs to prepare the QCOW2 used as test subject \
